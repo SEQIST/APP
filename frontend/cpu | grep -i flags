@@ -1,0 +1,12 @@
+[0;1;31m×[0m mongod.service - MongoDB Database Server
+     Loaded: loaded (]8;;file://debian/lib/systemd/system/mongod.service/lib/systemd/system/mongod.service]8;;; [0;1;38;5;185mdisabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;31mfailed[0m (Result: signal) since Thu 2025-02-27 21:03:36 CET; 6ms ago
+   Duration: 9ms
+       Docs: ]8;;https://docs.mongodb.org/manualhttps://docs.mongodb.org/manual]8;;
+    Process: 18263 ExecStart=/usr/bin/mongod --config /etc/mongod.conf [0;1;31m(code=killed, signal=ILL)[0m
+   Main PID: 18263 (code=killed, signal=ILL)
+        CPU: 8ms
+
+Feb 27 21:03:36 debian systemd[1]: Started mongod.service - MongoDB Database Server.
+Feb 27 21:03:36 debian systemd[1]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmongod.service: Main process exited, code=killed, status=4/ILL[0m
+Feb 27 21:03:36 debian systemd[1]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmongod.service: Failed with result 'signal'.[0m

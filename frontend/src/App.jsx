@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
@@ -17,6 +18,9 @@ import Departments from './pages/Departments';
 import Roles from './pages/Roles';
 import Locations from './pages/Locations';
 import DepartmentsFlow from './pages/DepartmentsFlow';
+import ErrorBoundary from './components/ErrorBoundary';
+import EditProcess from "./pages/EditProcess"; 
+
 
 function App() {
   return (
@@ -31,6 +35,7 @@ function App() {
             <Route path="/customers" element={<Customers />} />
             <Route path="/process-groups" element={<ProcessGroups />} />
             <Route path="/processes" element={<Processes />} />
+            <Route path="/processes/edit/:id" element={<EditProcess />} /> 
             <Route path="/process-flow" element={<ProcessFlow />} />
             <Route path="/gantt-simulation" element={<GanttSimulation />} />
             <Route path="/activities" element={<Activities />} />

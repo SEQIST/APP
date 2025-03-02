@@ -1,9 +1,11 @@
-// src/components/Sidebar.jsx
+import React from 'react'; // Importiere React für JSX
 import { Drawer, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
 import { Home, Work, People, Settings, Business, Group, LocationOn } from '@mui/icons-material';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom'; // Füge useLocation hinzu für aktive Navigation
 
 const Sidebar = () => {
+  const location = useLocation(); // Hole die aktuelle URL, um aktive Elemente zu markieren
+
   const menuItems = [
     { text: 'Home', icon: <Home />, path: '/' },
     { text: 'Projekt', icon: <Work />, path: '/project' },
@@ -11,6 +13,7 @@ const Sidebar = () => {
     { text: 'Kunden', icon: <People />, path: '/customers' },
     { text: 'Prozessgruppen', icon: <Group />, path: '/process-groups' },
     { text: 'Prozesse', icon: <Work />, path: '/processes' },
+    { text: 'Prozesse edit', icon: <Work />, path: '/edit-processes' },
     { text: 'Flow der Prozesse', icon: <Work />, path: '/process-flow' },
     { text: 'Gantt der Simulation', icon: <Work />, path: '/gantt-simulation' },
     { text: 'Aktivitäten', icon: <Work />, path: '/activities' },
@@ -24,10 +27,38 @@ const Sidebar = () => {
   ];
 
   return (
-    <Drawer variant="permanent" anchor="left">
+    <Drawer
+      variant="permanent"
+      anchor="left"
+      sx={{
+        width: 240,
+        flexShrink: 0,
+        '& .MuiDrawer-paper': {
+          width: 240,
+          boxSizing: 'border-box',
+          top: 64, // Passe dies an, falls du eine AppBar oder Header hast
+        },
+      }}
+    >
       <List>
         {menuItems.map((item) => (
-          <ListItem button key={item.text} component={Link} to={item.path}>
+          <ListItem
+            key={item.text}
+            component={Link}
+            to={item.path}
+            selected={location.pathname === item.path} // Markiere das aktive Element
+            sx={{
+              '&.Mui-selected': {
+                backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                '&:hover': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                },
+              },
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.04)', // Hover-Effekt für alle Elemente
+              },
+            }}
+          >
             <ListItemIcon>{item.icon}</ListItemIcon>
             <ListItemText primary={item.text} />
           </ListItem>

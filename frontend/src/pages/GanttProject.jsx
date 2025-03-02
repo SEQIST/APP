@@ -1,3 +1,4 @@
+import React from 'react';
 import { Chart } from 'react-google-charts';
 
 const GanttProject = () => {
@@ -19,12 +20,14 @@ const GanttProject = () => {
   const data = [columns, ...rows];
 
   return (
+    <div><h1>Gantt des Projektes</h1>
     <Chart
       chartType="Gantt"
       width="100%"
       height="400px"
       data={data}
     />
+    </div>
   );
 };
 

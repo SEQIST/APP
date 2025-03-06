@@ -1,3 +1,4 @@
+import React from 'react'; // React explizit importieren
 import { useState, useEffect } from 'react';
 import { List, ListItem, ListItemText, TextField, Button, Box, Typography, IconButton, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
@@ -31,7 +32,7 @@ const Departments = () => {
       if (!dept.isJuniorTo) {
         root.push(mappedDept);
       } else {
-        const parent = map.get(dept.isJuniorTo._id || dept.isJuniorTo);
+        const parent = map.get(dept.isJuniorTo?._id || dept.isJuniorTo);
         if (parent) {
           parent.children.push(mappedDept);
         } else {

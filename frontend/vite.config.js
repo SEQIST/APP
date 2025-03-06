@@ -1,15 +1,19 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  cacheDir: './node_modules/.vite_custom', // Einzigartiger Cache-Ordner
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5001', // Backend-Port
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
+  cacheDir: './node_modules/.vite_custom',
   optimizeDeps: {
-    exclude: ['@tiptap/starter-kit'], // Schließe problematische Abhängigkeiten aus, falls nötig
+    exclude: ['@tiptap/starter-kit'],
   },
 });
-
-
-// https://vite.dev/config/
-//export default defineConfig({
-//  plugins: [react()],
-// })

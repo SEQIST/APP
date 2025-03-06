@@ -1,6 +1,6 @@
+import React from 'react'; // React explizit importieren
 import { useState, useEffect } from 'react';
-import { Grid, TextField, Button, Typography, Paper, Divider, Link } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Grid, TextField, Button, Typography, Paper, Divider, Link as RouterLink } from '@mui/material'; // 'Link as RouterLink' korrigiert
 
 const Organization = () => {
   const [company, setCompany] = useState({

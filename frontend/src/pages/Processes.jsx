@@ -36,6 +36,9 @@ const Processes = () => {
       }),
     ])
       .then(([processesData, rolesData, processGroupsData]) => {
+        console.log('Processes:', processesData);
+        console.log('Roles:', rolesData);
+        console.log('Process Groups:', processGroupsData);
         setProcesses(processesData || []);
         setRoles(rolesData || []);
         setProcessGroups(processGroupsData || []);
@@ -49,11 +52,11 @@ const Processes = () => {
   };
 
   const handleAddProcess = () => {
-    navigate('/processes/edit/new'); // Navigiere zur Edit-Seite für einen neuen Prozess
+    navigate('/create-process'); // Neuer Pfad für das Erstellen eines Prozesses
   };
 
   const handleEditProcess = (processId) => {
-    navigate(`/processes/edit/${processId.toString()}`); // Navigiere zur Edit-Seite für einen bestehenden Prozess
+    navigate(`/edit-processes/${processId.toString()}`); // Anpassen des Pfads, um mit App.jsx übereinzustimmen
   };
 
   if (loading) return <Typography>Lade Prozesse...</Typography>;
@@ -71,14 +74,36 @@ const Processes = () => {
         ) : (
           processes.map(process => {
             // Holen Sie sich die verknüpften Daten für owner und processGroup
-            const owner = roles.find(role => role._id.toString() === (process.owner?.toString() || ''))?.name || 'Kein Eigentümer';
-            const processGroup = processGroups.find(pg => pg._id.toString() === (process.processGroup?.toString() || ''))?.name || 'Keine Prozessgruppe';
+            // Prüfen Sie, ob owner und processGroup als Objekte mit name oder als String vorliegen
+            const ownerObj = process.owner || {};
+            const processGroupObj = process.processGroup || {};
+
+            // Extrahieren Sie die IDs und Namen
+            const ownerId = ownerObj._id?.toString() || ownerObj.toString() || '';
+            const processGroupId = processGroupObj._id?.toString() || processGroupObj.toString() || '';
+
+            // Finden Sie die zugehörigen Namen direkt aus dem Objekt oder über _id
+            const owner = ownerObj.name || (roles.find(role => role._id.toString() === ownerId)?.name || 'Kein Eigentümer');
+            const processGroup = processGroupObj.name || (processGroups.find(pg => pg._id.toString() === processGroupId)?.name || 'Keine Prozessgruppe');
+
+            // Debugging-Logs für die Analyse
+            console.log('Process:', process);
+            console.log('Owner Object:', ownerObj);
+            console.log('Process Group Object:', processGroupObj);
+            console.log('Owner ID:', ownerId);
+            console.log('Process Group ID:', processGroupId);
+            console.log('Owner:', owner);
+            console.log('Process Group:', processGroup);
+
             return (
-              <ListItem key={process._id} secondaryAction={
-                <IconButton onClick={() => handleEditProcess(process._id.toString())} edge="end">
-                  <Edit />
-                </IconButton>
-              }>
+              <ListItem
+                key={process._id}
+                secondaryAction={
+                  <IconButton onClick={() => handleEditProcess(process._id.toString())} edge="end">
+                    <Edit />
+                  </IconButton>
+                }
+              >
                 <ListItemText 
                   primary={process.name || 'Kein Name'} 
                   secondary={`Abk.: ${process.abbreviation || 'Keine'}, Eigentümer: ${owner}, Gruppe: ${processGroup}`} 

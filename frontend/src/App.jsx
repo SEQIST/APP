@@ -19,37 +19,45 @@ import Roles from './pages/Roles';
 import Locations from './pages/Locations';
 import DepartmentsFlow from './pages/DepartmentsFlow';
 import ErrorBoundary from './components/ErrorBoundary';
-import EditProcess from "./pages/EditProcess"; 
-
+import EditProcess from './pages/EditProcess';
+import CreateProcess from './pages/CreateProcess';
+import TriggerList from './pages/TriggerList';
+import TriggerPage from './pages/TriggerPage';
 
 function App() {
   return (
     <Router>
-      <div style={{ display: 'flex', width: '100vw', height: '100vh' }}>
-        <Sidebar />
-        <div style={{ flex: 1, height: '100%', overflow: 'auto' }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/project" element={<Project />} />
-            <Route path="/gantt-project" element={<GanttProject />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/process-groups" element={<ProcessGroups />} />
-            <Route path="/processes" element={<Processes />} />
-            <Route path="/processes/edit/:id" element={<EditProcess />} /> 
-            <Route path="/process-flow" element={<ProcessFlow />} />
-            <Route path="/gantt-simulation" element={<GanttSimulation />} />
-            <Route path="/activities" element={<Activities />} />
-            <Route path="/work-products" element={<WorkProducts />} />
-            <Route path="/queries" element={<Queries />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/organization" element={<Organization />} />
-            <Route path="/organization/departments-flow" element={<DepartmentsFlow />} />
-            <Route path="/departments" element={<Departments />} />
-            <Route path="/roles" element={<Roles />} />
-            <Route path="/locations" element={<Locations />} />
-          </Routes>
+      <ErrorBoundary>
+        <div style={{ display: 'flex' }}>
+          <Sidebar />
+          <main style={{ flex: 1 }}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/project" element={<Project />} />
+              <Route path="/gantt-project" element={<GanttProject />} />
+              <Route path="/customers" element={<Customers />} />
+              <Route path="/process-groups" element={<ProcessGroups />} />
+              <Route path="/processes" element={<Processes />} />
+              <Route path="/process-flow" element={<ProcessFlow />} />
+              <Route path="triggers" element={<TriggerPage />}/>
+              <Route path="triggers-list" element={<TriggerList />}/>
+              <Route path="/gantt-simulation" element={<GanttSimulation />} />
+              <Route path="/activities" element={<Activities />} />
+              <Route path="/work-products" element={<WorkProducts />} />
+              <Route path="/queries" element={<Queries />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/organization" element={<Organization />} />
+              <Route path="/departments" element={<Departments />} />
+              <Route path="/departments-flow" element={<DepartmentsFlow />} />
+              <Route path="/roles" element={<Roles />} />
+              <Route path="/locations" element={<Locations />} />
+              <Route path="/edit-processes/:id" element={<EditProcess />} />
+              <Route path="/edit-processes/new" element={<EditProcess />} />
+              <Route path="/create-process" element={<CreateProcess />} />
+            </Routes>
+          </main>
         </div>
-      </div>
+      </ErrorBoundary>
     </Router>
   );
 }

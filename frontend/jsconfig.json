@@ -1,0 +1,14 @@
+// jsconfig.json
+{
+   "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*", "src/*"]
+    }
+  },
+  "include": ["src/**/*", "../tsconfig.json"],
+  "exclude": ["node_modules"]
+}

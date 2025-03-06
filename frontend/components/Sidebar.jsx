@@ -13,7 +13,7 @@ const Sidebar = () => {
     { text: 'Kunden', icon: <People />, path: '/customers' },
     { text: 'Prozessgruppen', icon: <Group />, path: '/process-groups' },
     { text: 'Prozesse', icon: <Work />, path: '/processes' },
-    { text: 'Prozesse edit', icon: <Work />, path: '/edit-processes' },
+    { text: 'Prozesse edit', icon: <Work />, path: '/edit-processes/new' },
     { text: 'Flow der Prozesse', icon: <Work />, path: '/process-flow' },
     { text: 'Gantt der Simulation', icon: <Work />, path: '/gantt-simulation' },
     { text: 'Aktivitäten', icon: <Work />, path: '/activities' },

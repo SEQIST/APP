@@ -1,313 +1,268 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Table, TableHead, TableBody, TableRow, TableCell, TableSortLabel, TextField, IconButton, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import { Edit, Delete } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Box, Typography, Button, Modal, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Add } from '@mui/icons-material';
+import Triggers from '../components/Triggers'; // Import der Triggers-Komponente
 
-const Activities = () => {
-  const [activities, setActivities] = useState([]);
-  const [roles, setRoles] = useState([]); // Für die Rolleninformationen
-  const [workProducts, setWorkProducts] = useState([]); // Für Work Products
-  const [order, setOrder] = useState('asc');
-  const [orderBy, setOrderBy] = useState('name');
-  const [filter, setFilter] = useState('');
-  const [openEdit, setOpenEdit] = useState(false);
-  const [selectedActivity, setSelectedActivity] = useState(null);
-  const [editedActivity, setEditedActivity] = useState({ name: '', description: '', executedBy: '', result: '', abbreviation: '', multiplicator: 1, workMode: '0', timeIfKnown: '', timeIfNew: '', versionMajor: 1, versionMinor: 0 });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const navigate = useNavigate();
+const ActivityForm = () => {
+  const navigate = useNavigate(); // Für die Navigation zwischen Seiten
+  const [searchParams] = useSearchParams(); // URL-Parameter auslesen
+  const processId = searchParams.get('processId'); // Prozess-ID aus URL
+  const activityId = searchParams.get('activityId'); // Aktivitäts-ID aus URL (optional, für Bearbeitung)
 
+  // Zustandsvariablen (State), die die Daten speichern
+  const [activities, setActivities] = useState([]); // Liste der Aktivitäten
+  const [roles, setRoles] = useState([]); // Liste der Rollen
+  const [workProducts, setWorkProducts] = useState([]); // Liste der Work Products
+  const [loading, setLoading] = useState(true); // Zeigt an, ob Daten geladen werden
+  const [error, setError] = useState(null); // Speichert Fehler, falls etwas schiefgeht
+  const [newWorkProductModalOpen, setNewWorkProductModalOpen] = useState(false); // Öffnet Modal für neues WP
+  const [addExistingWorkProductOpen, setAddExistingWorkProductOpen] = useState(false); // Öffnet Modal für vorhandenes WP
+  const [newWorkProduct, setNewWorkProduct] = useState({ name: '', description: '' }); // Daten für neues WP
+  const [existingWorkProduct, setExistingWorkProduct] = useState({ workProductId: '', completeness: 0 }); // Daten für vorhandenes WP
+
+  // Daten laden, wenn die Komponente startet
   useEffect(() => {
-    fetchData();
-  }, []);
+    const fetchData = async () => {
+      try {
+        // Paralleles Laden von Rollen, Work Products und (falls vorhanden) einer Aktivität
+        const [rolesData, workProductsData, activitiesData] = await Promise.all([
+          fetch('http://localhost:5001/api/roles').then(r => r.json()), // Rollen von API holen
+          fetch('http://localhost:5001/api/work-products').then(r => r.json()), // Work Products von API holen
+          activityId ? fetch(`http://localhost:5001/api/activities/${activityId}`).then(r => r.json()) : Promise.resolve([]), // Aktivität laden, falls activityId existiert
+        ]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [activitiesResponse, rolesResponse, workProductsResponse] = await Promise.all([
-        fetch('http://localhost:5001/api/activities'),
-        fetch('http://localhost:5001/api/roles'),
-        fetch('http://localhost:5001/api/work-products'),
-      ]);
-
-      if (!activitiesResponse.ok) {
-        throw new Error(`Fehler beim Laden von Aktivitäten: Status ${activitiesResponse.status} - ${await activitiesResponse.text()}`);
+        setRoles(rolesData || []); // Rollen speichern
+        setWorkProducts(workProductsData || []); // Work Products speichern
+        setActivities(activityId ? [activitiesData] : []); // Aktivität speichern, wenn bearbeitet wird
+        setLoading(false); // Laden abgeschlossen
+      } catch (error) {
+        console.error('Fehler beim Laden der Daten:', error);
+        setError(error.message); // Fehler speichern
+        setLoading(false); // Laden abgeschlossen, auch bei Fehler
       }
-      if (!rolesResponse.ok) {
-        throw new Error(`Fehler beim Laden von Rollen: Status ${rolesResponse.status} - ${await rolesResponse.text()}`);
-      }
-      if (!workProductsResponse.ok) {
-        throw new Error(`Fehler beim Laden von Work Products: Status ${workProductsResponse.status} - ${await workProductsResponse.text()}`);
-      }
+    };
 
-      const activitiesData = await activitiesResponse.json();
-      const rolesData = await rolesResponse.json();
-      const workProductsData = await workProductsResponse.json();
+    fetchData(); // Funktion ausführen
+  }, [activityId]); // Läuft erneut, wenn sich activityId ändert
 
-      console.log('Geladene Aktivitäten:', activitiesData);
-      console.log('Geladene Rollen:', rolesData);
-      console.log('Geladene Work Products:', workProductsData);
-
-      setActivities(activitiesData || []);
-      setRoles(rolesData || []);
-      setWorkProducts(workProductsData || []);
-    } catch (error) {
-      console.error('Fehler beim Abrufen der Daten:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
+  // Neue Aktivität zur Liste hinzufügen
+  const handleAddActivity = () => {
+    setActivities(prevActivities => [
+      ...prevActivities, // Alte Aktivitäten beibehalten
+      {
+        name: '',
+        description: '',
+        executedBy: '',
+        triggerWorkProducts: [{ workProductId: '', completeness: 0, isWorkloadDetermining: false }], // Standard-Trigger
+        workMode: '0',
+        knownTime: '',
+        estimatedTime: '',
+        timeUnit: 'minutes',
+        multiplicator: 1,
+        result: '',
+        versionMajor: 1,
+        versionMinor: 0,
+      },
+    ]);
   };
 
-  const handleRequestSort = (property) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
+  // Eine Aktivität in der Liste aktualisieren
+  const handleActivityChange = (index, updatedActivity) => {
+    const newActivities = [...activities]; // Kopie der Aktivitätenliste
+    newActivities[index] = updatedActivity; // Aktualisierte Aktivität an Stelle "index" einfügen
+    setActivities(newActivities); // Neuen State setzen
   };
 
-  const handleFilterChange = (e) => {
-    setFilter(e.target.value);
-  };
+  // Aktivitäten speichern (an API senden)
+  const handleSave = () => {
+    const method = activityId ? 'PUT' : 'POST'; // PUT für Update, POST für Neu
+    const url = activityId ? `http://localhost:5001/api/activities/${activityId}` : 'http://localhost:5001/api/activities'; // API-URL
 
-  const handleEdit = (activity) => {
-    setSelectedActivity(activity);
-    setEditedActivity({
-      name: activity.name || '',
-      description: activity.description || '',
-      executedBy: activity.executedBy?._id || activity.executedBy || '',
-      result: activity.result?._id || activity.result || '',
-      abbreviation: activity.abbreviation || '', // Füge abbreviation hinzu
-      multiplicator: activity.multiplicator || 1,
-      workMode: activity.workMode || '0',
-      timeIfKnown: activity.timeIfKnown || '',
-      timeIfNew: activity.timeIfNew || '',
-      versionMajor: activity.versionMajor || 1,
-      versionMinor: activity.versionMinor || 0
+    activities.forEach(async (activity, index) => {
+      const cleanedActivity = { // Daten bereinigen, um leere Werte zu vermeiden
+        name: activity.name || '',
+        description: activity.description || '',
+        executedBy: activity.executedBy || null,
+        triggerWorkProducts: activity.triggerWorkProducts.map(tp => ({
+          workProductId: tp.workProductId || null,
+          completeness: tp.completeness || 0,
+          isWorkloadDetermining: tp.isWorkloadDetermining || false,
+        })),
+        workMode: activity.workMode,
+        knownTime: activity.knownTime || null,
+        estimatedTime: activity.estimatedTime || null,
+        timeUnit: activity.timeUnit,
+        multiplicator: activity.multiplicator || 1,
+        result: activity.result || null,
+        process: processId && /^[0-9a-fA-F]{24}$/.test(processId) ? processId : null, // Prozess-ID prüfen
+        versionMajor: activity.versionMajor,
+        versionMinor: activity.versionMinor,
+      };
+
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cleanedActivity), // Daten als JSON senden
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP-Fehler! Status: ${response.status}`);
+        }
+        if (index === activities.length - 1) { // Bei letzter Aktivität zurück navigieren
+          navigate(processId ? `/edit-processes/${processId}` : '/processes');
+        }
+      } catch (error) {
+        console.error('Fehler beim Speichern der Aktivität:', error);
+        setError(error.message);
+      }
     });
-    setOpenEdit(true);
   };
 
-  const handleDelete = (activityId) => {
-    fetch(`http://localhost:5001/api/activities/${activityId}`, { method: 'DELETE' })
-      .then(response => {
-        if (!response.ok) throw new Error(`Fehler beim Löschen: Status ${response.status} - ${response.statusText}`);
-        setActivities(activities.filter(a => a._id !== activityId));
-      })
-      .catch(error => console.error('Fehler beim Löschen der Aktivität:', error));
-  };
-
-  const handleSaveEdit = () => {
-    fetch(`http://localhost:5001/api/activities/${selectedActivity._id}`, {
-      method: 'PUT',
+  // Neues Work Product hinzufügen
+  const handleAddNewWorkProduct = () => {
+    fetch('http://localhost:5001/api/work-products', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...editedActivity,
-        versionMinor: editedActivity.versionMinor + 1 // Inkrementiere Minor-Version
-      }),
+      body: JSON.stringify(newWorkProduct), // Neues WP an API senden
     })
       .then(response => {
-        if (!response.ok) throw new Error(`Fehler beim Bearbeiten: Status ${response.status} - ${response.statusText}`);
-        return response.json();
+        if (!response.ok) throw new Error(`HTTP-Fehler! Status: ${response.status}`);
+        return response.json(); // Antwort als JSON parsen
       })
       .then(data => {
-        setActivities(activities.map(a => a._id === data._id ? data : a));
-        setOpenEdit(false);
-        setSelectedActivity(null);
-        setEditedActivity({ name: '', description: '', executedBy: '', result: '', abbreviation: '', multiplicator: 1, workMode: '0', timeIfKnown: '', timeIfNew: '', versionMajor: 1, versionMinor: 0 });
+        setWorkProducts(prevWorkProducts => [...prevWorkProducts, data]); // Neues WP zur Liste hinzufügen
+        setActivities(prevActivities => prevActivities.map(activity => ({
+          ...activity,
+          triggerWorkProducts: [...activity.triggerWorkProducts, { workProductId: data._id, completeness: 0, isWorkloadDetermining: false }], // Neues WP als Trigger hinzufügen
+          result: data._id, // Neues WP als Ergebnis setzen
+        })));
+        setNewWorkProductModalOpen(false); // Modal schließen
+        setNewWorkProduct({ name: '', description: '' }); // Formular zurücksetzen
       })
-      .catch(error => console.error('Fehler beim Bearbeiten der Aktivität:', error));
+      .catch(error => {
+        console.error('Fehler beim Hinzufügen eines neuen Work Products:', error);
+        setError(error.message);
+      });
   };
 
-  const sortedAndFilteredActivities = activities
-    .filter(activity => (activity.name || '').toLowerCase().includes(filter.toLowerCase()))
-    .sort((a, b) => {
-      if (orderBy === 'executedBy') {
-        const roleA = roles.find(r => r._id.toString() === (a.executedBy?._id || a.executedBy));
-        const roleB = roles.find(r => r._id.toString() === (b.executedBy?._id || b.executedBy));
-        return order === 'asc' ? (roleA?.name || '').localeCompare(roleB?.name || '') : (roleB?.name || '').localeCompare(roleA?.name || '');
-      }
-      return order === 'asc' ? (a[orderBy] || '').localeCompare(b[orderBy] || '') : (b[orderBy] || '').localeCompare(a[orderBy] || '');
-    });
+  // Vorhandenes Work Product hinzufügen
+  const handleAddExistingWorkProduct = () => {
+    const { workProductId, completeness } = existingWorkProduct;
+    if (!workProductId) return; // Abbrechen, wenn kein WP ausgewählt
 
-  if (loading) return <Typography>Lade Aktivitäten...</Typography>;
+    setActivities(prevActivities => prevActivities.map(activity => ({
+      ...activity,
+      triggerWorkProducts: [...activity.triggerWorkProducts, { workProductId, completeness: completeness || 0, isWorkloadDetermining: false }], // Vorhandenes WP als Trigger hinzufügen
+    })));
+    setAddExistingWorkProductOpen(false); // Modal schließen
+    setExistingWorkProduct({ workProductId: '', completeness: 0 }); // Formular zurücksetzen
+  };
+
+  const handleEditWorkProduct = (workProductId) => {
+    navigate(`/work-products/edit/${workProductId}`); // Zu WP-Bearbeitungsseite navigieren
+  };
+
+  // Lade- oder Fehlerinformation anzeigen
+  if (loading) return <Typography>Lade Aktivität...</Typography>;
   if (error) return <Typography>Fehler: {error}</Typography>;
 
+  // Haupt-Rendering der Komponente
   return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h4" gutterBottom>Aktivitäten</Typography>
-      <Box sx={{ mb: 2 }}>
-        <TextField
-          label="Filter (Name)"
-          value={filter}
-          onChange={handleFilterChange}
-          variant="outlined"
-          size="small"
-          sx={{ mr: 2 }}
+    <Box sx={{ padding: 4, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: '80vh', overflowY: 'auto' }}>
+      <Typography variant="h4" gutterBottom>{activityId ? 'Aktivität bearbeiten' : 'Neue Aktivität erstellen'}</Typography>
+      {activities.map((activity, index) => (
+        <Triggers
+          key={index}
+          activity={activity} // Aktivität an Triggers-Komponente weitergeben
+          onChange={(updatedActivity) => handleActivityChange(index, updatedActivity)} // Änderungen zurückgeben
+          workProducts={workProducts} // Liste der Work Products
+          onAddNewWorkProduct={() => setNewWorkProductModalOpen(true)} // Modal für neues WP öffnen
+          onAddExistingWorkProduct={() => setAddExistingWorkProductOpen(true)} // Modal für vorhandenes WP öffnen
+          onEditWorkProduct={handleEditWorkProduct} // WP bearbeiten
+          onRemoveTrigger={(triggerIndex) => { // Trigger entfernen
+            const newActivities = [...activities];
+            newActivities[index].triggerWorkProducts = newActivities[index].triggerWorkProducts.filter((_, i) => i !== triggerIndex);
+            setActivities(newActivities);
+          }}
+          onSetWorkloadDetermining={(triggerIndex) => { // Workload bestimmenden Faktor setzen
+            const newActivities = [...activities];
+            newActivities[index].triggerWorkProducts.forEach((tp, i) => {
+              tp.isWorkloadDetermining = i === triggerIndex; // Nur der ausgewählte Trigger wird "true"
+            });
+            setActivities(newActivities);
+          }}
         />
+      ))}
+      <Box sx={{ mt: 2 }}>
+        <Button variant="contained" onClick={handleAddActivity} startIcon={<Add />}>
+          Neue Aktivität hinzufügen
+        </Button>
+        <Button variant="contained" onClick={handleSave} sx={{ ml: 2 }}>
+          Speichern
+        </Button>
+        <Button variant="outlined" onClick={() => navigate(processId ? `/edit-processes/${processId}` : '/processes')} sx={{ ml: 2 }}>
+          Zurück
+        </Button>
       </Box>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>
-              <TableSortLabel
-                active={orderBy === 'name'}
-                direction={orderBy === 'name' ? order : 'asc'}
-                onClick={() => handleRequestSort('name')}
-              >
-                Name
-              </TableSortLabel>
-            </TableCell>
-            <TableCell>
-              <TableSortLabel
-                active={orderBy === 'executedBy'}
-                direction={orderBy === 'executedBy' ? order : 'asc'}
-                onClick={() => handleRequestSort('executedBy')}
-              >
-                Erstellt von Rolle
-              </TableSortLabel>
-            </TableCell>
-            <TableCell>
-              <TableSortLabel
-                active={orderBy === 'result'}
-                direction={orderBy === 'result' ? order : 'asc'}
-                onClick={() => handleRequestSort('result')}
-              >
-                Ergebnis (Work Product)
-              </TableSortLabel>
-            </TableCell>
-            <TableCell>
-              <TableSortLabel
-                active={orderBy === 'abbreviation'}
-                direction={orderBy === 'abbreviation' ? order : 'asc'}
-                onClick={() => handleRequestSort('abbreviation')}
-              >
-                Abkürzung
-              </TableSortLabel>
-            </TableCell>
-            <TableCell>Aktionen</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {sortedAndFilteredActivities.map(activity => (
-            <TableRow key={activity._id}>
-              <TableCell>{activity.name || 'Kein Name'}</TableCell>
-              <TableCell>{roles.find(r => r._id.toString() === (activity.executedBy?._id || activity.executedBy))?.name || 'Keine Rolle'}</TableCell>
-              <TableCell>{workProducts.find(w => w._id.toString() === (activity.result?._id || activity.result))?.name || 'Kein Work Product'}</TableCell>
-              <TableCell>{activity.abbreviation || 'Keine Abkürzung'}</TableCell>
-              <TableCell>
-                <IconButton onClick={() => handleEdit(activity)} aria-label="Bearbeiten">
-                  <Edit />
-                </IconButton>
-                <IconButton onClick={() => handleDelete(activity._id)} aria-label="Löschen">
-                  <Delete />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
 
-      {/* Overlay für Bearbeiten */}
-      <Dialog open={openEdit} onClose={() => setOpenEdit(false)}>
-        <DialogTitle>Aktivität bearbeiten</DialogTitle>
-        <DialogContent>
+      {/* Modal für neues Work Product */}
+      <Modal open={newWorkProductModalOpen} onClose={() => setNewWorkProductModalOpen(false)}>
+        <Box sx={{ bgcolor: 'white', p: 4, borderRadius: 2, maxWidth: 400, mx: 'auto', mt: '20%' }}>
+          <Typography variant="h6" gutterBottom>Neues Work Product hinzufügen</Typography>
           <TextField
-            label="Name"
-            value={editedActivity.name}
-            onChange={(e) => setEditedActivity({ ...editedActivity, name: e.target.value })}
-            variant="outlined"
-            size="small"
-            sx={{ mr: 2, mb: 2, width: '100%' }}
+            label="Work Product Name"
+            value={newWorkProduct.name}
+            onChange={(e) => setNewWorkProduct({ ...newWorkProduct, name: e.target.value })}
+            fullWidth
+            sx={{ mb: 2 }}
           />
           <TextField
             label="Beschreibung"
-            value={editedActivity.description}
-            onChange={(e) => setEditedActivity({ ...editedActivity, description: e.target.value })}
-            variant="outlined"
-            size="small"
+            value={newWorkProduct.description}
+            onChange={(e) => setNewWorkProduct({ ...newWorkProduct, description: e.target.value })}
+            fullWidth
             multiline
-            rows={2}
-            sx={{ mr: 2, mb: 2, width: '100%' }}
+            rows={4}
+            sx={{ mb: 2 }}
           />
-          <FormControl sx={{ mr: 2, mb: 2, width: '100%' }}>
-            <InputLabel>Rolle</InputLabel>
+          <Button variant="contained" onClick={handleAddNewWorkProduct} sx={{ mr: 2 }}>Speichern</Button>
+          <Button variant="outlined" onClick={() => setNewWorkProductModalOpen(false)}>Abbrechen</Button>
+        </Box>
+      </Modal>
+
+      {/* Modal für vorhandenes Work Product */}
+      <Modal open={addExistingWorkProductOpen} onClose={() => setAddExistingWorkProductOpen(false)}>
+        <Box sx={{ bgcolor: 'white', p: 4, borderRadius: 2, maxWidth: 400, mx: 'auto', mt: '20%' }}>
+          <Typography variant="h6" gutterBottom>Vorhandenes Work Product hinzufügen</Typography>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Work Product</InputLabel>
             <Select
-              value={editedActivity.executedBy || ''}
-              onChange={(e) => setEditedActivity({ ...editedActivity, executedBy: e.target.value })}
-              size="small"
+              value={existingWorkProduct.workProductId}
+              onChange={(e) => setExistingWorkProduct({ ...existingWorkProduct, workProductId: e.target.value })}
+              label="Work Product"
+              sx={{ height: '56px' }}
             >
-              <MenuItem value="">Keine</MenuItem>
-              {roles.map(role => (
-                <MenuItem key={role._id} value={role._id}>{role.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl sx={{ mr: 2, mb: 2, width: '100%' }}>
-            <InputLabel>Ergebnis (Work Product)</InputLabel>
-            <Select
-              value={editedActivity.result || ''}
-              onChange={(e) => setEditedActivity({ ...editedActivity, result: e.target.value })}
-              size="small"
-            >
-              <MenuItem value="">Keine</MenuItem>
-              {workProducts.map(wp => (
-                <MenuItem key={wp._id} value={wp._id}>{wp.name}</MenuItem>
+              {workProducts.map(product => (
+                <MenuItem key={product._id} value={product._id}>{product.name}</MenuItem>
               ))}
             </Select>
           </FormControl>
           <TextField
-            label="Abkürzung"
-            value={editedActivity.abbreviation}
-            onChange={(e) => setEditedActivity({ ...editedActivity, abbreviation: e.target.value })}
-            variant="outlined"
-            size="small"
-            sx={{ mr: 2, mb: 2, width: '100%' }}
-          />
-          <TextField
-            label="Multiplikator"
+            label="% Fertigstellung"
+            value={existingWorkProduct.completeness}
+            onChange={(e) => setExistingWorkProduct({ ...existingWorkProduct, completeness: e.target.value })}
+            fullWidth
             type="number"
-            value={editedActivity.multiplicator}
-            onChange={(e) => setEditedActivity({ ...editedActivity, multiplicator: Number(e.target.value) })}
-            variant="outlined"
-            size="small"
-            sx={{ mr: 2, mb: 2, width: '100%' }}
+            inputProps={{ min: 0, max: 100 }}
+            sx={{ mb: 2 }}
           />
-          <FormControl sx={{ mr: 2, mb: 2, width: '100%' }}>
-            <InputLabel>Work Mode</InputLabel>
-            <Select
-              value={editedActivity.workMode}
-              onChange={(e) => setEditedActivity({ ...editedActivity, workMode: e.target.value })}
-              size="small"
-            >
-              <MenuItem value="0">Einer</MenuItem>
-              <MenuItem value="1">Jeder</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField
-            label="Zeit (bekannt)"
-            value={editedActivity.timeIfKnown}
-            onChange={(e) => setEditedActivity({ ...editedActivity, timeIfKnown: e.target.value })}
-            variant="outlined"
-            size="small"
-            sx={{ mr: 2, mb: 2, width: '100%' }}
-          />
-          <TextField
-            label="Zeit (geschätzt)"
-            value={editedActivity.timeIfNew}
-            onChange={(e) => setEditedActivity({ ...editedActivity, timeIfNew: e.target.value })}
-            variant="outlined"
-            size="small"
-            sx={{ mr: 2, mb: 2, width: '100%' }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEdit(false)}>Abbrechen</Button>
-          <Button onClick={handleSaveEdit} variant="contained">Speichern</Button>
-        </DialogActions>
-      </Dialog>
+          <Button variant="contained" onClick={handleAddExistingWorkProduct} sx={{ mr: 2 }}>Hinzufügen</Button>
+          <Button variant="outlined" onClick={() => setAddExistingWorkProductOpen(false)}>Abbrechen</Button>
+        </Box>
+      </Modal>
     </Box>
   );
 };
 
-export default Activities;
+export default ActivityForm;

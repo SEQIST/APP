@@ -1,0 +1,18 @@
+// tsconfig.json (falls vorhanden und im /app/ Verzeichnis)
+{
+    "compilerOptions": {
+      "target": "ESNext",
+      "module": "ESNext",
+      "jsx": "react-jsx",
+      "baseUrl": ".",
+      "paths": {
+        "*": ["node_modules/*", "src/*"]
+      },
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules"]
+  }

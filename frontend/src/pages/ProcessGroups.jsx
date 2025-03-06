@@ -15,8 +15,10 @@ const ProcessGroups = () => {
       fetch('http://localhost:5001/api/processes').then(r => r.json()),
     ])
       .then(([groups, procs]) => {
+        // Filtere ungültige (null/undefined) Prozesse aus
+        const validProcesses = procs.filter(proc => proc && proc._id);
         setProcessGroups(groups || []);
-        setProcesses(procs || []);
+        setProcesses(validProcesses || []);
       })
       .catch(error => console.error('Error fetching processes:', error));
   }, []);
@@ -26,7 +28,7 @@ const ProcessGroups = () => {
     const map = new Map();
 
     // Filtere nur Prozesse mit gültigen IDs und vermeide zirkuläre Verweise
-    const validProcesses = processes.filter(proc => proc._id && (proc.isJuniorTo?._id !== proc._id)); // Verhindere Selbstverweis
+    const validProcesses = processes.filter(proc => proc && proc._id && (proc.isJuniorTo?._id !== proc._id)); // Verhindere Selbstverweis
     validProcesses.forEach(proc => map.set(proc._id, { ...proc, children: [] }));
 
     // Baue die Hierarchie und vermeide zirkuläre Verweise
@@ -163,12 +165,12 @@ const ProcessGroups = () => {
               handleEditProcess(proc._id, { ...proc, isJuniorTo: value });
             }}
             renderValue={(selected) => {
-              const selectedProcess = processes.find(p => p._id === selected);
+              const selectedProcess = processes.find(p => p && p._id === selected);
               return selectedProcess ? selectedProcess.name : '';
             }}
           >
             <MenuItem value="">Keine</MenuItem>
-            {processes.filter(p => p._id !== proc._id && !isCircular(proc._id, p._id, new Map(processes.map(p => [p._id, p])))).map(p => (
+            {processes.filter(p => p && p._id !== proc._id && !isCircular(proc._id, p._id, new Map(processes.map(p => [p._id, p])))).map(p => (
               <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
             ))}
           </Select>
@@ -239,7 +241,7 @@ const ProcessGroups = () => {
             </IconButton>
           </ListItem>
           <List>
-            {root.filter(proc => proc.processGroup._id === group._id).map(proc => renderProcess(proc))}
+            {root.filter(proc => proc && proc.processGroup && proc.processGroup._id === group._id).map(proc => renderProcess(proc))}
           </List>
         </div>
       ))}
@@ -271,12 +273,12 @@ const ProcessGroups = () => {
               setNewProcess({ ...newProcess, processGroup: value });
             }}
             renderValue={(selected) => {
-              const selectedGroup = processGroups.find(g => g._id === selected);
+              const selectedGroup = processGroups.find(g => g && g._id === selected);
               return selectedGroup ? selectedGroup.name : '';
             }}
           >
             <MenuItem value="">Keine</MenuItem>
-            {processGroups.map(g => (
+            {processGroups.filter(g => g && g._id).map(g => (
               <MenuItem key={g._id} value={g._id}>{g.name}</MenuItem>
             ))}
           </Select>
@@ -294,12 +296,12 @@ const ProcessGroups = () => {
               setNewProcess({ ...newProcess, isJuniorTo: value });
             }}
             renderValue={(selected) => {
-              const selectedProcess = processes.find(p => p._id === selected);
+              const selectedProcess = processes.find(p => p && p._id === selected);
               return selectedProcess ? selectedProcess.name : '';
             }}
           >
             <MenuItem value="">Keine</MenuItem>
-            {processes.filter(p => p._id !== newProcess._id && !isCircular(newProcess._id, p._id, new Map(processes.map(p => [p._id, p])))).map(p => (
+            {processes.filter(p => p && p._id !== newProcess._id && !isCircular(newProcess._id, p._id, new Map(processes.map(p => [p._id, p])))).map(p => (
               <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>
             ))}
           </Select>

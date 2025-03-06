@@ -1,4 +1,3 @@
-// src/components/ErrorBoundary.jsx
 import React, { Component } from 'react';
 
 class ErrorBoundary extends Component {
@@ -27,7 +26,6 @@ class ErrorBoundary extends Component {
         </div>
       );
     }
-
     return this.props.children;
   }
 }

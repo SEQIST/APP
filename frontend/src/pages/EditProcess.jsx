@@ -1,156 +1,91 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Typography, Button } from '@mui/material';
-import ProcessEditor from '../components/ProcessEditor';
-import ProcessFlowCanvas from '../components/ProcessFlowCanvas';
-import ActivitySidebar from '../components/ActivitySidebar';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Box, Typography, TextField, Button, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 
-const EditProcess = () => {
-  const { id } = useParams(); // Hole die Prozess-ID aus der URL (oder "new" für einen neuen Prozess)
+const EditProcesses = () => {
   const navigate = useNavigate();
+  const { id } = useParams(); // ID des Prozesses aus der URL (für Bearbeitung)
+  const [searchParams] = useSearchParams(); // URL-Parameter auslesen
+  const processId = searchParams.get('processId'); // Prozess-ID für neue/zu bearbeitende Prozesse
 
-  const [process, setProcess] = useState({ 
-    name: '', 
-    abbreviation: '', 
-    processPurpose: '', 
-    processGroup: '', 
-    owner: '' // Als String für die _id
+  const [process, setProcess] = useState({
+    name: '',
+    description: '',
+    processGroup: '', // String (ObjectId) für Prozessgruppe
+    owner: '', // String (ObjectId) für Eigentümer
+    versionMajor: 1,
+    versionMinor: 0,
   });
   const [processGroups, setProcessGroups] = useState([]);
-  const [roles, setRoles] = useState([]); // Zustand für Rollen
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
-  const [activities, setActivities] = useState([]); // Zustand für Aktivitäten
+  const [roles, setRoles] = useState([]); // Zustand für Rollen hinzufügen
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [workProducts, setWorkProducts] = useState([]);
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Prozessgruppen und Rollen laden
+        const [groupsResponse, rolesResponse, processResponse] = await Promise.all([
+          fetch('http://localhost:5001/api/process-groups').then(r => r.json()),
+          fetch('http://localhost:5001/api/roles').then(r => r.json()),
+          id ? fetch(`http://localhost:5001/api/processes/${id}`).then(r => r.json()) : Promise.resolve(null),
+        ]);
+
+        setProcessGroups(groupsResponse || []);
+        setRoles(rolesResponse || []);
+
+        if (processResponse) {
+          // Stelle sicher, dass processGroup und owner als Strings (ObjectIds) extrahiert werden
+          setProcess({
+            ...processResponse,
+            processGroup: processResponse.processGroup?._id?.toString() || processResponse.processGroup?.toString() || '',
+            owner: processResponse.owner?._id?.toString() || processResponse.owner?.toString() || '',
+          });
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Fehler beim Laden der Daten:', error);
+        setError(error.message);
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, [id]);
 
-  // Füge workProducts zum fetchData hinzu
-const fetchData = () => {
-  setLoading(true);
-  setError(null);
-  Promise.all([
-    id !== 'new' ? fetch(`http://localhost:5001/api/processes/${id}`).then(r => {
-      if (!r.ok) {
-        if (r.status === 404) throw new Error('Prozess nicht gefunden');
-        throw new Error(`HTTP-Fehler! Status: ${r.status} - ${r.statusText}`);
-      }
-      return r.json();
-    }) : Promise.resolve(null),
-    fetch('http://localhost:5001/api/process-groups').then(r => {
-      if (!r.ok) throw new Error(`HTTP-Fehler! Status: ${r.status} - ${r.statusText}`);
-      return r.json();
-    }),
-    fetch('http://localhost:5001/api/roles').then(r => {
-      if (!r.ok) throw new Error(`HTTP-Fehler! Status: ${r.status} - ${r.statusText}`);
-      return r.json();
-    }),
-    fetch('http://localhost:5001/api/activities').then(r => {
-      if (!r.ok) throw new Error(`HTTP-Fehler! Status: ${r.status} - ${r.statusText}`);
-      return r.json();
-    }),
-    fetch('http://localhost:5001/api/work-products').then(r => { // Work Products hinzufügen
-      if (!r.ok) throw new Error(`HTTP-Fehler! Status: ${r.status} - ${r.statusText}`);
-      return r.json();
-    }),
-  ])
-    .then(([processData, groups, rolesData, activitiesData, workProductsData]) => {
-      if (processData && !processData.error) {
-        setProcess({
-          name: processData.name || '',
-          abbreviation: processData.abbreviation || '',
-          processPurpose: processData.processPurpose || '',
-          processGroup: processData.processGroup?._id?.toString() || '',
-          owner: processData.owner?._id?.toString() || ''
-        });
-      } else {
-        setProcess({ name: '', abbreviation: '', processPurpose: '', processGroup: '', owner: '' });
-      }
-      setProcessGroups(groups || []);
-      setRoles(rolesData || []);
-      setActivities(activitiesData || []);
-      setWorkProducts(workProductsData || []); // Work Products speichern
-      setLoading(false);
-    })
-    .catch(error => {
-      console.error('Fehler beim Laden der Daten:', error);
-      setError(error.message);
-      setLoading(false);
-    });
-};
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setProcess({ ...process, [name]: value });
-  };
-
-  const handleQuillChange = (value) => {
-    setProcess({ ...process, processPurpose: value });
+    // Sicherstellen, dass nur Strings (ObjectIds) akzeptiert werden
+    setProcess(prev => ({
+      ...prev,
+      [name]: value === '' ? '' : value.toString(), // Konvertiere in String, wenn nicht leer
+    }));
   };
 
   const handleSave = () => {
-    const method = id === 'new' ? 'POST' : 'PUT';
-    const url = id === 'new' ? 'http://localhost:5001/api/processes' : `http://localhost:5001/api/processes/${id.toString()}`;
-    
-    const cleanedProcess = {
-      name: process.name || '',
-      abbreviation: process.abbreviation || '',
-      processPurpose: process.processPurpose || '',
-      processGroup: process.processGroup || null,
-      owner: process.owner || null
-    };
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `http://localhost:5001/api/processes/${id}` : 'http://localhost:5001/api/processes';
 
     fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cleanedProcess),
+      body: JSON.stringify({
+        ...process,
+        versionMinor: id ? (process.versionMinor + 1) : 0, // Inkrementiere Minor-Version bei Updates
+      }),
     })
       .then(response => {
-        if (!response.ok) {
-          return response.json().then(errorData => {
-            throw new Error(`HTTP-Fehler! Status: ${response.status} - ${errorData.error || response.statusText}`);
-          });
-        }
+        if (!response.ok) throw new Error(`HTTP-Fehler! Status: ${response.status}`);
         return response.json();
       })
       .then(data => {
-        fetchData(); // Lade die Daten neu, um sicherzustellen, dass die Änderungen angezeigt werden
-        navigate('/processes'); // Zurück zur Prozess-Liste nach dem Speichern
+        console.log('Gespeicherter Prozess:', data);
+        navigate('/edit-processes'); // Zurück zur Prozessliste
       })
       .catch(error => {
-        console.error('Fehler beim Speichern des Prozesses:', error);
+        console.error('Fehler beim Speichern:', error);
         setError(error.message);
       });
-  };
-
-  const onNodesChange = useCallback(
-    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  );
-  const onEdgesChange = useCallback(
-    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
-  );
-
-  const handleAddActivity = (activityData) => {
-    fetch('http://localhost:5001/api/activities', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...activityData,
-        process: id, // Verknüpfe die Aktivität mit dem aktuellen Prozess
-        versionMinor: activityData.versionMinor + 1 // Inkrementiere Minor-Version bei jedem Speichern
-      }),
-    })
-      .then(response => response.json())
-      .then(data => {
-        setActivities([...activities, data]);
-      })
-      .catch(error => console.error('Error adding activity:', error));
   };
 
   if (loading) return <Typography>Lade Prozess...</Typography>;
@@ -158,33 +93,58 @@ const fetchData = () => {
 
   return (
     <Box sx={{ padding: 4 }}>
-      <Typography variant="h4" gutterBottom>{id === 'new' ? 'Neuer Prozess' : 'Prozess bearbeiten'}</Typography>
-      <ProcessEditor
-        process={process}
-        processGroups={processGroups}
-        roles={roles}
+      <Typography variant="h4">{id ? 'Prozess bearbeiten' : 'Neuen Prozess erstellen'}</Typography>
+      <TextField
+        label="Name"
+        name="name"
+        value={process.name}
         onChange={handleChange}
-        onQuillChange={handleQuillChange}
+        fullWidth
+        required
+        sx={{ mt: 2 }}
       />
+      <TextField
+        label="Beschreibung"
+        name="description"
+        value={process.description}
+        onChange={handleChange}
+        fullWidth
+        multiline
+        rows={4}
+        sx={{ mt: 2 }}
+      />
+      <FormControl fullWidth sx={{ mt: 2 }}>
+        <InputLabel>Prozessgruppe</InputLabel>
+        <Select
+          name="processGroup"
+          value={process.processGroup}
+          onChange={handleChange}
+        >
+          <MenuItem value="">Keine</MenuItem>
+          {processGroups.map(group => (
+            <MenuItem key={group._id} value={group._id.toString()}>{group.name}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl fullWidth sx={{ mt: 2 }}>
+        <InputLabel>Eigentümer (Rolle)</InputLabel>
+        <Select
+          name="owner"
+          value={process.owner}
+          onChange={handleChange}
+        >
+          <MenuItem value="">Kein Eigentümer</MenuItem>
+          {roles.map(role => (
+            <MenuItem key={role._id} value={role._id.toString()}>{role.name}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
       <Box sx={{ mt: 2 }}>
-        <Button variant="contained" onClick={handleSave} sx={{ mt: 2 }}>
-          Prozess speichern
-        </Button>
+        <Button variant="contained" onClick={handleSave}>Speichern</Button>
+        <Button variant="outlined" onClick={() => navigate('/edit-processes')} sx={{ ml: 2 }}>Zurück</Button>
       </Box>
-      <ProcessFlowCanvas 
-        nodes={nodes} 
-        edges={edges} 
-        onNodesChange={onNodesChange} 
-        onEdgesChange={onEdgesChange} 
-      />
-     <ActivitySidebar 
-      roles={roles} 
-      activities={activities} 
-      workProducts={workProducts} // Work Products als Prop hinzufügen
-      onAddActivity={handleAddActivity} 
-    />
     </Box>
   );
 };
 
-export default EditProcess;
+export default EditProcesses;

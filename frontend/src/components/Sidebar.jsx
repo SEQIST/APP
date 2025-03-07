@@ -24,7 +24,7 @@ const Sidebar = () => {
     { text: 'Abfragen', icon: <Work />, path: '/queries' },
     { text: 'Einstellungen', icon: <Settings />, path: '/settings' },
     { text: 'Organisation', icon: <Business />, path: '/organization' },
-    { text: 'Flow ansicht', icon: <Business />, path: '/organization' },
+    { text: 'Flow ansicht', icon: <Business />, path: '/departments-flow' },
     { text: 'Abteilungen', icon: <Group />, path: '/departments' },
     { text: 'Rollen', icon: <Group />, path: '/roles' },
     { text: 'Standorte', icon: <LocationOn />, path: '/locations' },

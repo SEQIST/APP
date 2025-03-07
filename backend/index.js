@@ -14,6 +14,10 @@ const Trigger = require('./models/Trigger');
 const app = express();
 app.use(express.json());
 app.use(cors());
+app.use((req, res, next) => {
+  console.log(`Anfrage empfangen: ${req.method} ${req.url}`);
+  next();
+});
 
 mongoose.connect('mongodb://127.0.0.1:27018/myapp', {})
   .then(() => console.log('MongoDB connected mit myapp'))
@@ -41,7 +45,7 @@ app.get('/api/company', async (req, res) => {
   }
 });
 
-// GET-Endpunkt für alle Trigger
+// Trigger-Endpunkte
 app.get('/api/triggers', async (req, res) => {
   try {
     const triggers = await Trigger.find().populate('workProducts.workProduct workloadLoad');
@@ -52,21 +56,42 @@ app.get('/api/triggers', async (req, res) => {
   }
 });
 
-// POST-Endpunkt für neue Trigger
 app.post('/api/triggers', async (req, res) => {
   try {
-    const trigger = new Trigger(req.body);
+    const triggerData = req.body;
+    console.log('Empfangene Trigger-Daten:', triggerData);
+    if (!triggerData.timeTrigger || typeof triggerData.timeTrigger.value !== 'number') {
+      return res.status(400).json({ error: 'timeTrigger.value ist erforderlich und muss eine Zahl sein' });
+    }
+    const trigger = new Trigger(triggerData);
     const savedTrigger = await trigger.save();
     res.status(201).json(savedTrigger);
   } catch (error) {
     console.error('Fehler beim Erstellen des Triggers:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: 'Validierungsfehler: ' + Object.values(error.errors).map(e => e.message).join(', ') });
+    }
+    res.status(500).json({ error: 'Interner Serverfehler: ' + error.message });
+  }
+});
+
+app.get('/api/triggers/:id', async (req, res) => {
+  console.log('GET /api/triggers/:id aufgerufen mit ID:', req.params.id);
+  try {
+    const trigger = await Trigger.findById(req.params.id).populate('workProducts.workProduct workloadLoad');
+    if (!trigger) {
+      console.log('Kein Trigger gefunden für ID:', req.params.id);
+      return res.status(404).json({ error: 'Trigger nicht gefunden' });
+    }
+    res.json(trigger);
+  } catch (error) {
+    console.error('Fehler beim Abrufen des Triggers:', error);
     res.status(500).json({ error: 'Interner Serverfehler: ' + error.message });
   }
 });
 
 // Arbeitsprodukt-Endpunkte
-// GET-Endpunkt für alle Work Products
-app.get('/api/work-products', async (req, res) => {
+app.get('/api/workproducts', async (req, res) => {
   try {
     const workProducts = await WorkProduct.find();
     res.json(workProducts);
@@ -76,8 +101,7 @@ app.get('/api/work-products', async (req, res) => {
   }
 });
 
-// POST-Endpunkt für neue Work Products
-app.post('/api/work-products', async (req, res) => {
+app.post('/api/workproducts', async (req, res) => {
   try {
     const workProduct = new WorkProduct(req.body);
     const savedWorkProduct = await workProduct.save();
@@ -242,12 +266,11 @@ app.delete('/api/recurring-tasks/:id', async (req, res) => {
 });
 
 // Prozessgruppen-Endpunkte
-// POST-Endpunkt für /api/process-groups (neue Prozessgruppe hinzufügen)
 app.post('/api/process-groups', async (req, res) => {
   try {
     const newProcessGroup = new ProcessGroup(req.body);
     const savedProcessGroup = await newProcessGroup.save();
-    res.status(201).json(savedProcessGroup); // Gib die erstellte Prozessgruppe zurück
+    res.status(201).json(savedProcessGroup);
   } catch (error) {
     console.error('Fehler beim Erstellen der Prozessgruppe:', error);
     if (error.name === 'ValidationError') {
@@ -285,7 +308,8 @@ app.delete('/api/process-groups/:id', async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
-// GET-Endpunkt für /api/processes (alle Prozesse abrufen)
+
+// Prozess-Endpunkte
 app.get('/api/processes', async (req, res) => {
   try {
     const processes = await Process.find().populate('owner processGroup');
@@ -299,7 +323,6 @@ app.get('/api/processes', async (req, res) => {
   }
 });
 
-// GET-Endpunkt für /api/processes/:id (einzelnen Prozess abrufen)
 app.get('/api/processes/:id', async (req, res) => {
   try {
     const process = await Process.findById(req.params.id).populate('owner processGroup');
@@ -313,24 +336,20 @@ app.get('/api/processes/:id', async (req, res) => {
   }
 });
 
-// PUT-Endpunkt für /api/processes/:id (Prozess bearbeiten)
 app.put('/api/processes/:id', async (req, res) => {
   try {
-    const processId = new mongoose.Types.ObjectId(req.params.id); // Konvertiere String in ObjectId mit 'new'
-    console.log('Empfangene Daten:', JSON.stringify(req.body, null, 2)); // Debugging
-
+    const processId = new mongoose.Types.ObjectId(req.params.id);
+    console.log('Empfangene Daten:', JSON.stringify(req.body, null, 2));
     const cleanedProcess = {
       ...req.body,
-      processGroup: req.body.processGroup ? new mongoose.Types.ObjectId(req.body.processGroup) : null, // Konvertiere String zu ObjectId
-      owner: req.body.owner ? new mongoose.Types.ObjectId(req.body.owner) : null // Konvertiere String zu ObjectId
+      processGroup: req.body.processGroup ? new mongoose.Types.ObjectId(req.body.processGroup) : null,
+      owner: req.body.owner ? new mongoose.Types.ObjectId(req.body.owner) : null,
     };
-
     const updatedProcess = await Process.findByIdAndUpdate(
       processId,
       cleanedProcess,
       { new: true, runValidators: true, upsert: false }
     ).populate('owner processGroup');
-
     if (!updatedProcess) {
       return res.status(404).json({ error: 'Prozess nicht gefunden' });
     }
@@ -347,15 +366,13 @@ app.put('/api/processes/:id', async (req, res) => {
   }
 });
 
-// POST-Endpunkt für /api/processes (neuen Prozess hinzufügen)
 app.post('/api/processes', async (req, res) => {
   try {
     const cleanedProcess = {
       ...req.body,
-      processGroup: req.body.processGroup ? new mongoose.Types.ObjectId(req.body.processGroup) : null, // Konvertiere String zu ObjectId
-      owner: req.body.owner ? new mongoose.Types.ObjectId(req.body.owner) : null // Konvertiere String zu ObjectId
+      processGroup: req.body.processGroup ? new mongoose.Types.ObjectId(req.body.processGroup) : null,
+      owner: req.body.owner ? new mongoose.Types.ObjectId(req.body.owner) : null,
     };
-
     const newProcess = new Process(cleanedProcess);
     const savedProcess = await newProcess.save();
     res.status(201).json(savedProcess);
@@ -367,7 +384,7 @@ app.post('/api/processes', async (req, res) => {
     res.status(500).json({ error: 'Interner Serverfehler: ' + error.message });
   }
 });
-// DELETE-Endpunkt für /api/processes/:id (Prozess löschen)
+
 app.delete('/api/processes/:id', async (req, res) => {
   try {
     const deletedProcess = await Process.findByIdAndDelete(req.params.id);
@@ -381,37 +398,53 @@ app.delete('/api/processes/:id', async (req, res) => {
   }
 });
 
-// Ähnliche Endpunkte für process-groups, workproducts und activities
-app.get('/api/process-groups', async (req, res) => {
-  try {
-    const groups = await ProcessGroup.find();
-    res.json(groups);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/workproducts', async (req, res) => {
-  try {
-    const workProducts = await WorkProduct.find();
-    res.json(workProducts);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
+// Aktivitäten-Endpunkte
 app.get('/api/activities', async (req, res) => {
   try {
-    const activities = await Activity.find();
+    const activities = await Activity.find()
+      .populate('process')
+      .populate('result')
+      .populate('executedBy')
+      .populate('trigger.workProducts._id'); // Populiere Work Products im Trigger
     res.json(activities);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Aktivitäten-Endpunkte
+app.get('/api/activities/:id', async (req, res) => {
+  try {
+    const activity = await Activity.findById(req.params.id)
+      .populate('process')
+      .populate('result')
+      .populate('executedBy')
+      .populate('trigger.workProducts._id');
+    if (!activity) {
+      return res.status(404).json({ error: 'Aktivität nicht gefunden' });
+    }
+    res.status(200).json(activity);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/activities', async (req, res) => {
   try {
+    // Validierung des Trigger-Feldes
+    if (req.body.trigger) {
+      const { workProducts, determiningFactorId } = req.body.trigger;
+      if (workProducts) {
+        // Prüfe, ob determiningFactorId in workProducts enthalten ist
+        if (determiningFactorId && !workProducts.some(wp => wp._id.toString() === determiningFactorId.toString())) {
+          return res.status(400).json({ error: 'determiningFactorId muss ein Work Product in der Liste sein' });
+        }
+        // Prüfe, dass nur ein Work Product als bestimmender Faktor markiert ist
+        const determiningFactors = workProducts.filter(wp => wp.isDeterminingFactor);
+        if (determiningFactors.length > 1) {
+          return res.status(400).json({ error: 'Nur ein Work Product kann der bestimmende Faktor sein' });
+        }
+      }
+    }
     const activity = new Activity(req.body);
     await activity.save();
     res.status(201).json(activity);
@@ -420,18 +453,28 @@ app.post('/api/activities', async (req, res) => {
   }
 });
 
-app.get('/api/activities', async (req, res) => {
-  try {
-    const activities = await Activity.find().populate('process').populate('workProduct').populate('role');
-    res.json(activities);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 app.put('/api/activities/:id', async (req, res) => {
   try {
-    const activity = await Activity.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    // Validierung des Trigger-Feldes
+    if (req.body.trigger) {
+      const { workProducts, determiningFactorId } = req.body.trigger;
+      if (workProducts) {
+        // Prüfe, ob determiningFactorId in workProducts enthalten ist
+        if (determiningFactorId && !workProducts.some(wp => wp._id.toString() === determiningFactorId.toString())) {
+          return res.status(400).json({ error: 'determiningFactorId muss ein Work Product in der Liste sein' });
+        }
+        // Prüfe, dass nur ein Work Product als bestimmender Faktor markiert ist
+        const determiningFactors = workProducts.filter(wp => wp.isDeterminingFactor);
+        if (determiningFactors.length > 1) {
+          return res.status(400).json({ error: 'Nur ein Work Product kann der bestimmende Faktor sein' });
+        }
+      }
+    }
+    const activity = await Activity.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
+      .populate('process')
+      .populate('result')
+      .populate('executedBy')
+      .populate('trigger.workProducts._id');
     if (!activity) return res.status(404).json({ error: 'Activity not found' });
     res.json(activity);
   } catch (error) {

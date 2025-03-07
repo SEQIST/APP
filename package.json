@@ -4,11 +4,9 @@
   "main": ".eslintrc.js",
   "devDependencies": {
     "@chromatic-com/storybook": "^3.2.5",
-    "@storybook/addon-essentials": "^8.6.3",
     "@storybook/addon-onboarding": "^8.6.3",
     "@storybook/blocks": "^8.6.3",
     "@storybook/experimental-addon-test": "^8.6.3",
-    "@storybook/react": "^8.6.3",
     "@storybook/react-vite": "^8.6.3",
     "@storybook/test": "^8.6.3",
     "@vitest/browser": "^3.0.7",

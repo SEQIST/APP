@@ -12,7 +12,10 @@ const WorkProducts = () => {
 
   useEffect(() => {
     fetch('http://localhost:5001/api/workproducts')
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) throw new Error(`Fehler beim Laden: ${response.status}`);
+        return response.json();
+      })
       .then(data => setWorkProducts(data))
       .catch(error => console.error('Error fetching work products:', error));
   }, []);
@@ -34,12 +37,15 @@ const WorkProducts = () => {
   };
 
   const handleAdd = () => {
-    fetch('http://localhost:5001/api/workproducts', {
+    fetch('http://localhost:5001/api/workproducts', { // Korrigierter Endpunkt
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newName, description: newDescription }),
     })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) throw new Error(`Fehler beim Hinzufügen: ${response.status}`);
+        return response.json();
+      })
       .then(data => {
         setWorkProducts([...workProducts, data]);
         setNewName('');
@@ -54,7 +60,10 @@ const WorkProducts = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedWp),
     })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) throw new Error(`Fehler beim Bearbeiten: ${response.status}`);
+        return response.json();
+      })
       .then(data => {
         setWorkProducts(workProducts.map(wp => (wp._id === id ? data : wp)));
       })
@@ -65,7 +74,8 @@ const WorkProducts = () => {
     fetch(`http://localhost:5001/api/workproducts/${id}`, {
       method: 'DELETE',
     })
-      .then(() => {
+      .then(response => {
+        if (!response.ok) throw new Error(`Fehler beim Löschen: ${response.status}`);
         setWorkProducts(workProducts.filter(wp => wp._id !== id));
       })
       .catch(error => console.error('Error deleting work product:', error));

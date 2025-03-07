@@ -5,7 +5,7 @@ import {
   InputLabel, IconButton, Dialog, DialogTitle, 
   DialogContent, DialogActions, Typography, Box 
 } from '@mui/material';
-import { Edit, Delete, Add } from '@mui/icons-material';
+import { Delete, Add, AccessTime } from '@mui/icons-material';
 
 const Roles = () => {
   const [roles, setRoles] = useState([]);
@@ -141,7 +141,7 @@ const Roles = () => {
   const handleDeleteRole = (id) => {
     fetch(`http://localhost:5001/api/roles/${id}`, { method: 'DELETE' })
       .then(response => {
-        if (!response.ok) throw new Error(`HTTP-Fehler! Status: ${response.status} - ${response.statusText}`);
+        if (!response.ok) throw new Error(`HTTP-Fehler! Status: ${r.status} - ${r.statusText}`);
         setRoles(roles.filter(r => r._id !== id));
       })
       .catch(error => console.error('Fehler beim Löschen der Rolle:', error));
@@ -179,23 +179,264 @@ const Roles = () => {
     setOpenTaskDialog(true);
   };
 
-  if (loading) return <Typography>Lade Rollen...</Typography>;
-  if (error) return <Typography>Fehler: {error}</Typography>;
+  // Prüfen, ob repetitive Loads existieren
+  const hasRepetitiveLoad = (roleId) => tasks.filter(t => t.role._id === roleId).length > 0;
+
+  if (loading) return <Typography sx={{ fontSize: '0.75rem' }}>Lade Rollen...</Typography>;
+  if (error) return <Typography sx={{ fontSize: '0.75rem' }}>Fehler: {error}</Typography>;
 
   return (
     <Box sx={{ padding: 4 }}>
-      <Typography variant="h4" gutterBottom>Rollen</Typography>
-      <Box sx={{ mb: 2 }}>
-        <TextField label="Name" value={newRole.name} onChange={(e) => setNewRole({ ...newRole, name: e.target.value })} sx={{ mr: 2, width: 150 }} />
-        <TextField label="Abkürzung" value={newRole.abbreviation} onChange={(e) => setNewRole({ ...newRole, abbreviation: e.target.value })} sx={{ mr: 2, width: 100 }} />
-        <TextField label="Beschreibung" value={newRole.description} onChange={(e) => setNewRole({ ...newRole, description: e.target.value })} sx={{ mr: 2, width: 200 }} />
-        <FormControl sx={{ mr: 2, width: 150 }}><InputLabel>Abteilung</InputLabel><Select value={newRole.department} onChange={(e) => setNewRole({ ...newRole, department: e.target.value })}><MenuItem value="">Keine</MenuItem>{departments.map(dept => <MenuItem key={dept._id} value={dept._id}>{dept.name}</MenuItem>)}</Select></FormControl>
-        <FormControl sx={{ mr: 2, width: 150 }}><InputLabel>Zahlungstyp</InputLabel><Select value={newRole.paymentType} onChange={(e) => setNewRole({ ...newRole, paymentType: e.target.value })}><MenuItem value="yearly">Jährlich (Angestellt)</MenuItem><MenuItem value="hourly">Stündlich (Freiberuflich)</MenuItem></Select></FormControl>
-        <TextField label={newRole.paymentType === 'yearly' ? 'Jahresgehalt' : 'Stundensatz'} type="number" value={newRole.paymentValue} onChange={(e) => setNewRole({ ...newRole, paymentValue: e.target.value })} sx={{ mr: 2, width: 150 }} />
-        <Button variant="contained" onClick={handleAddRole}>Hinzufügen</Button>
+      <Typography variant="h4" gutterBottom sx={{ fontSize: '0.75rem' }}>Rollen</Typography>
+      <Box sx={{ mb: 2, display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 0.5 }}>
+        <TextField 
+          label="Name" 
+          value={newRole.name} 
+          onChange={(e) => setNewRole({ ...newRole, name: e.target.value })} 
+          sx={{ mr: 0.5, width: 120, fontSize: '0.75rem' }} 
+        />
+        <TextField 
+          label="Abkürzung" 
+          value={newRole.abbreviation} 
+          onChange={(e) => setNewRole({ ...newRole, abbreviation: e.target.value })} 
+          sx={{ mr: 0.5, width: 80, fontSize: '0.75rem' }} 
+        />
+        <TextField 
+          label="Beschreibung" 
+          value={newRole.description} 
+          onChange={(e) => setNewRole({ ...newRole, description: e.target.value })} 
+          sx={{ mr: 0.5, width: 150, fontSize: '0.6rem' }} 
+        />
+        <FormControl sx={{ mr: 0.5, width: 120, fontSize: '0.75rem' }}>
+          <InputLabel sx={{ fontSize: '0.75rem' }}>Abteilung</InputLabel>
+          <Select 
+            value={newRole.department} 
+            onChange={(e) => setNewRole({ ...newRole, department: e.target.value })} 
+            sx={{ fontSize: '0.75rem' }}
+          >
+            <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Keine</MenuItem>
+            {departments.map(dept => (
+              <MenuItem key={dept._id} value={dept._id} sx={{ fontSize: '0.75rem' }}>{dept.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Box sx={{ display: 'flex', alignItems: 'center', mr: 0.5 }}>
+          <FormControl sx={{ width: 100, fontSize: '0.75rem' }}>
+            <InputLabel sx={{ fontSize: '0.75rem' }}>Zahlungstyp</InputLabel>
+            <Select 
+              value={newRole.paymentType} 
+              onChange={(e) => setNewRole({ ...newRole, paymentType: e.target.value })} 
+              sx={{ fontSize: '0.75rem' }}
+            >
+              <MenuItem value="yearly" sx={{ fontSize: '0.75rem' }}>Jährlich</MenuItem>
+              <MenuItem value="hourly" sx={{ fontSize: '0.75rem' }}>Stündlich</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField 
+            label={newRole.paymentType === 'yearly' ? 'Jahresgehalt' : 'Stundensatz'} 
+            type="number" 
+            value={newRole.paymentValue} 
+            onChange={(e) => setNewRole({ ...newRole, paymentValue: e.target.value })} 
+            sx={{ ml: 0.5, width: 120, fontSize: '0.75rem' }} 
+          />
+        </Box>
+        <Button variant="contained" onClick={handleAddRole} sx={{ fontSize: '0.75rem' }}>
+          Hinzufügen
+        </Button>
       </Box>
-      <Table><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Abkürzung</TableCell><TableCell>Beschreibung</TableCell><TableCell>Abteilung</TableCell><TableCell>Zahlung</TableCell><TableCell>Std/Tag (Max Load)</TableCell><TableCell>Std/Tag (Verfügbar)</TableCell><TableCell>Aktionen</TableCell></TableRow></TableHead><TableBody>{roles.map(role => {const { workHoursDayMaxLoad, availableDailyHours } = calculateRoleHours(role);return <TableRow key={role._id}><TableCell><TextField value={role.name || ''} onChange={(e) => handleEditRole(role._id, { ...role, name: e.target.value })} size="small" /></TableCell><TableCell><TextField value={role.abbreviation || ''} onChange={(e) => handleEditRole(role._id, { ...role, abbreviation: e.target.value })} size="small" /></TableCell><TableCell><TextField value={role.description || ''} onChange={(e) => handleEditRole(role._id, { ...role, description: e.target.value })} size="small" /></TableCell><TableCell><FormControl fullWidth><Select value={role.department?._id || role.department || ''} onChange={(e) => handleEditRole(role._id, { ...role, department: e.target.value || null })} size="small"><MenuItem value="">Keine</MenuItem>{departments.map(dept => <MenuItem key={dept._id} value={dept._id}>{dept.name}</MenuItem>)}</Select></FormControl></TableCell><TableCell><FormControl fullWidth><Select value={role.paymentType || 'yearly'} onChange={(e) => handleEditRole(role._id, { ...role, paymentType: e.target.value })} size="small"><MenuItem value="yearly">Jährlich</MenuItem><MenuItem value="hourly">Stündlich</MenuItem></Select></FormControl><TextField value={role.paymentValue || ''} onChange={(e) => handleEditRole(role._id, { ...role, paymentValue: e.target.value })} type="number" size="small" /></TableCell><TableCell><TextField value={workHoursDayMaxLoad} InputProps={{ readOnly: true }} size="small" /></TableCell><TableCell>{availableDailyHours}</TableCell><TableCell><IconButton onClick={() => handleOpenTaskDialog(role._id)}><Edit /></IconButton><IconButton onClick={() => handleDeleteRole(role._id)}><Delete /></IconButton></TableCell></TableRow>;})}</TableBody></Table>
-      <Dialog open={openTaskDialog} onClose={() => setOpenTaskDialog(false)}><DialogTitle>Wiederkehrende Tätigkeiten für Rolle</DialogTitle><DialogContent><Box sx={{ mb: 2 }}><TextField label="Name" value={newTask.name} onChange={(e) => setNewTask({ ...newTask, name: e.target.value })} sx={{ mr: 2, mt: 2 }} /><TextField label="Wie oft" type="number" value={newTask.frequency} onChange={(e) => setNewTask({ ...newTask, frequency: parseInt(e.target.value, 10) || 1 })} sx={{ mr: 2, mt: 2 }} /><FormControl sx={{ mr: 2, mt: 2, width: 150 }}><InputLabel>Rhythmus</InputLabel><Select value={newTask.rhythm} onChange={(e) => setNewTask({ ...newTask, rhythm: e.target.value })}><MenuItem value="hourly">Stündlich</MenuItem><MenuItem value="daily">Täglich</MenuItem><MenuItem value="weekly">Wöchentlich</MenuItem><MenuItem value="monthly">Monatlich</MenuItem><MenuItem value="yearly">Jährlich</MenuItem></Select></FormControl><TextField label="Dauer" type="number" value={newTask.duration} onChange={(e) => setNewTask({ ...newTask, duration: parseInt(e.target.value, 10) || 0 })} sx={{ mr: 2, mt: 2 }} /><FormControl sx={{ mt: 2, width: 150 }}><InputLabel>Einheit</InputLabel><Select value={newTask.unit} onChange={(e) => setNewTask({ ...newTask, unit: e.target.value })}><MenuItem value="minutes">Minuten</MenuItem><MenuItem value="hours">Stunden</MenuItem><MenuItem value="days">Tage</MenuItem></Select></FormControl></Box><Button variant="contained" onClick={handleAddTask} sx={{ mt: 2 }}>Tätigkeit hinzufügen</Button><Table sx={{ mt: 2 }}><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Wie oft</TableCell><TableCell>Rhythmus</TableCell><TableCell>Dauer</TableCell><TableCell>Einheit</TableCell><TableCell>Aktionen</TableCell></TableRow></TableHead><TableBody>{tasks.filter(t => t.role._id === selectedRoleId).map(task => <TableRow key={task._id}><TableCell>{task.name || 'Unbenannt'}</TableCell><TableCell>{task.frequency || 1}</TableCell><TableCell>{task.rhythm || 'daily'}</TableCell><TableCell>{task.duration || 0}</TableCell><TableCell>{task.unit || 'minutes'}</TableCell><TableCell><IconButton onClick={() => handleDeleteTask(task._id)}><Delete /></IconButton></TableCell></TableRow>)}</TableBody></Table></DialogContent><DialogActions><Button onClick={() => setOpenTaskDialog(false)}>Schließen</Button></DialogActions></Dialog>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ fontSize: '0.75rem' }}>Name</TableCell>
+            <TableCell sx={{ fontSize: '0.75rem' }}>Abkürzung</TableCell>
+            <TableCell sx={{ fontSize: '0.75rem' }}>Beschreibung</TableCell>
+            <TableCell sx={{ fontSize: '0.75rem' }}>Abteilung</TableCell>
+            <TableCell sx={{ fontSize: '0.75rem' }}>Zahlung</TableCell>
+            <TableCell sx={{ fontSize: '0.75rem' }}>Std/Tag (Max Load)</TableCell>
+            <TableCell sx={{ fontSize: '0.75rem' }}>Std/Tag (Verfügbar)</TableCell>
+            <TableCell sx={{ fontSize: '0.75rem' }}>Aktionen</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {roles.map(role => {
+            const { workHoursDayMaxLoad, availableDailyHours } = calculateRoleHours(role);
+            const hasLoad = hasRepetitiveLoad(role._id);
+            return (
+              <TableRow key={role._id}>
+                <TableCell>
+                  <TextField 
+                    value={role.name || ''} 
+                    onChange={(e) => handleEditRole(role._id, { ...role, name: e.target.value })} 
+                    size="small" 
+                    sx={{ fontSize: '0.75rem' }} 
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField 
+                    value={role.abbreviation || ''} 
+                    onChange={(e) => handleEditRole(role._id, { ...role, abbreviation: e.target.value })} 
+                    size="small" 
+                    sx={{ fontSize: '0.75rem' }} 
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField 
+                    value={role.description || ''} 
+                    onChange={(e) => handleEditRole(role._id, { ...role, description: e.target.value })} 
+                    size="small" 
+                    sx={{ fontSize: '0.6rem' }} 
+                  />
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <Select 
+                      value={role.department?._id || role.department || ''} 
+                      onChange={(e) => handleEditRole(role._id, { ...role, department: e.target.value || null })} 
+                      size="small" 
+                      sx={{ fontSize: '0.75rem' }}
+                    >
+                      <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Keine</MenuItem>
+                      {departments.map(dept => (
+                        <MenuItem key={dept._id} value={dept._id} sx={{ fontSize: '0.75rem' }}>{dept.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <FormControl sx={{ width: 100, fontSize: '0.75rem' }}>
+                      <InputLabel sx={{ fontSize: '0.75rem' }}>Zahlungstyp</InputLabel>
+                      <Select 
+                        value={role.paymentType || 'yearly'} 
+                        onChange={(e) => handleEditRole(role._id, { ...role, paymentType: e.target.value })} 
+                        size="small" 
+                        sx={{ fontSize: '0.75rem' }}
+                      >
+                        <MenuItem value="yearly" sx={{ fontSize: '0.75rem' }}>Jährlich</MenuItem>
+                        <MenuItem value="hourly" sx={{ fontSize: '0.75rem' }}>Stündlich</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <TextField 
+                      value={role.paymentValue || ''} 
+                      onChange={(e) => handleEditRole(role._id, { ...role, paymentValue: e.target.value })} 
+                      type="number" 
+                      size="small" 
+                      sx={{ ml: 0.5, width: 120, fontSize: '0.75rem' }} 
+                    />
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Typography sx={{ fontSize: '0.75rem' }}>{workHoursDayMaxLoad}</Typography> {/* Kein TextField mehr */}
+                </TableCell>
+                <TableCell>
+                  <Typography sx={{ fontSize: '0.75rem' }}>{availableDailyHours}</Typography> {/* Entspricht der Darstellung */}
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <IconButton 
+                      onClick={() => handleOpenTaskDialog(role._id)} 
+                      sx={{ fontSize: '0.75rem', color: hasLoad ? 'green' : 'inherit' }} 
+                    >
+                      <AccessTime />
+                      {hasLoad && (
+                        <Typography sx={{ fontSize: '0.75rem', ml: 0.5 }}>
+                          {tasks.filter(t => t.role._id === role._id).length}
+                        </Typography>
+                      )}
+                    </IconButton>
+                    <IconButton onClick={() => handleDeleteRole(role._id)} sx={{ fontSize: '0.75rem' }}><Delete /></IconButton>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      <Dialog open={openTaskDialog} onClose={() => setOpenTaskDialog(false)}>
+        <DialogTitle sx={{ fontSize: '0.75rem' }}>Wiederkehrende Tätigkeiten für Rolle</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 2, display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 0.5 }}>
+            <TextField 
+              label="Name" 
+              value={newTask.name} 
+              onChange={(e) => setNewTask({ ...newTask, name: e.target.value })} 
+              sx={{ mr: 0.5, mt: 2, width: 120, fontSize: '0.75rem' }} 
+            />
+            <TextField 
+              label="Wie oft" 
+              type="number" 
+              value={newTask.frequency} 
+              onChange={(e) => setNewTask({ ...newTask, frequency: parseInt(e.target.value, 10) || 1 })} 
+              sx={{ mr: 0.5, mt: 2, width: 80, fontSize: '0.75rem' }} 
+            />
+            <FormControl sx={{ mr: 0.5, mt: 2, width: 120, fontSize: '0.75rem' }}>
+              <InputLabel sx={{ fontSize: '0.75rem' }}>Rhythmus</InputLabel>
+              <Select 
+                value={newTask.rhythm} 
+                onChange={(e) => setNewTask({ ...newTask, rhythm: e.target.value })} 
+                sx={{ fontSize: '0.75rem' }}
+              >
+                <MenuItem value="hourly" sx={{ fontSize: '0.75rem' }}>Stündlich</MenuItem>
+                <MenuItem value="daily" sx={{ fontSize: '0.75rem' }}>Täglich</MenuItem>
+                <MenuItem value="weekly" sx={{ fontSize: '0.75rem' }}>Wöchentlich</MenuItem>
+                <MenuItem value="monthly" sx={{ fontSize: '0.75rem' }}>Monatlich</MenuItem>
+                <MenuItem value="yearly" sx={{ fontSize: '0.75rem' }}>Jährlich</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField 
+              label="Dauer" 
+              type="number" 
+              value={newTask.duration} 
+              onChange={(e) => setNewTask({ ...newTask, duration: parseInt(e.target.value, 10) || 0 })} 
+              sx={{ mr: 0.5, mt: 2, width: 80, fontSize: '0.75rem' }} 
+            />
+            <FormControl sx={{ mt: 2, width: 120, fontSize: '0.75rem' }}>
+              <InputLabel sx={{ fontSize: '0.75rem' }}>Einheit</InputLabel>
+              <Select 
+                value={newTask.unit} 
+                onChange={(e) => setNewTask({ ...newTask, unit: e.target.value })} 
+                sx={{ fontSize: '0.75rem' }}
+              >
+                <MenuItem value="minutes" sx={{ fontSize: '0.75rem' }}>Minuten</MenuItem>
+                <MenuItem value="hours" sx={{ fontSize: '0.75rem' }}>Stunden</MenuItem>
+                <MenuItem value="days" sx={{ fontSize: '0.75rem' }}>Tage</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          <Button variant="contained" onClick={handleAddTask} sx={{ mt: 2, fontSize: '0.75rem' }}>
+            Tätigkeit hinzufügen
+          </Button>
+          <Table sx={{ mt: 2 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontSize: '0.75rem' }}>Name</TableCell>
+                <TableCell sx={{ fontSize: '0.75rem' }}>Wie oft</TableCell>
+                <TableCell sx={{ fontSize: '0.75rem' }}>Rhythmus</TableCell>
+                <TableCell sx={{ fontSize: '0.75rem' }}>Dauer</TableCell>
+                <TableCell sx={{ fontSize: '0.75rem' }}>Einheit</TableCell>
+                <TableCell sx={{ fontSize: '0.75rem' }}>Aktionen</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {tasks.filter(t => t.role._id === selectedRoleId).map(task => (
+                <TableRow key={task._id}>
+                  <TableCell sx={{ fontSize: '0.75rem' }}>{task.name || 'Unbenannt'}</TableCell>
+                  <TableCell sx={{ fontSize: '0.75rem' }}>{task.frequency || 1}</TableCell>
+                  <TableCell sx={{ fontSize: '0.75rem' }}>{task.rhythm || 'daily'}</TableCell>
+                  <TableCell sx={{ fontSize: '0.75rem' }}>{task.duration || 0}</TableCell>
+                  <TableCell sx={{ fontSize: '0.75rem' }}>{task.unit || 'minutes'}</TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleDeleteTask(task._id)} sx={{ fontSize: '0.75rem' }}><Delete /></IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenTaskDialog(false)} sx={{ fontSize: '0.75rem' }}>Schließen</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

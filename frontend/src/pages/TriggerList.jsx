@@ -16,8 +16,9 @@ const TriggerList = () => {
           fetch('http://localhost:5001/api/triggers').then(r => r.json()),
           fetch('http://localhost:5001/api/activities').then(r => r.json())
         ]);
-        setTriggers(triggersData || []);
-        setActivities(activitiesData || []);
+        console.log('Geladene Triggers:', triggersData); // Debugging
+        setTriggers(Array.isArray(triggersData) ? triggersData : []);
+        setActivities(Array.isArray(activitiesData) ? activitiesData : []);
         setLoading(false);
       } catch (error) {
         console.error('Fehler beim Laden der Daten:', error);
@@ -29,6 +30,7 @@ const TriggerList = () => {
   }, []);
 
   const handleEdit = (triggerId) => {
+    console.log('Navigiere zu Trigger-ID:', triggerId); // Debugging
     navigate(`/triggers/edit/${triggerId}`);
   };
 
@@ -47,23 +49,35 @@ const TriggerList = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Zugeordnete Aktivität</TableCell>
+              <TableCell>Arbeitsprodukte</TableCell>
+              <TableCell>Zeit-Trigger</TableCell>
+              <TableCell>Arbeitslast</TableCell>
               <TableCell>Aktionen</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {triggers.map(trigger => (
-              <TableRow key={trigger._id}>
-                <TableCell>{trigger.name}</TableCell>
-                <TableCell>
-                  {activities.find(activity => activity.triggeredBy === trigger._id)?.name || 'Keine'}
-                </TableCell>
-                <TableCell>
-                  <Button onClick={() => handleEdit(trigger._id)}>Bearbeiten</Button>
-                </TableCell>
+            {Array.isArray(triggers) && triggers.length > 0 ? (
+              triggers.map(trigger => (
+                <TableRow key={trigger._id}>
+                  <TableCell>
+                    {trigger.workProducts.map(wp => wp.workProduct?.name || wp.workProduct).join(', ')}
+                  </TableCell>
+                  <TableCell>
+                    {trigger.timeTrigger.value} {trigger.timeTrigger.unit}{trigger.timeTrigger.repetition ? ` (${trigger.timeTrigger.repetition})` : ''}
+                  </TableCell>
+                  <TableCell>
+                    {trigger.workloadLoad?.name || trigger.workloadLoad}
+                  </TableCell>
+                  <TableCell>
+                    <Button onClick={() => handleEdit(trigger._id)}>Bearbeiten</Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4}>Keine Trigger verfügbar</TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </TableContainer>

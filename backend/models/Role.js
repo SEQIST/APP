@@ -1,13 +1,14 @@
 const mongoose = require('mongoose');
 
 const roleSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true }, // UNIQUE Name
-  abbreviation: { type: String, required: true, unique: true }, // UNIQUE Abkürzung
+  name: { type: String, required: true, unique: true },
+  abbreviation: { type: String, required: true, unique: true },
   description: { type: String, required: true },
-  company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true }, // Referenz zur Firma
-  department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null }, // Referenz zur Abteilung
-  paymentType: { type: String, enum: ['yearly', 'hourly'], required: true }, // Angestellt (jährlich) oder Freiberuflich (stündlich)
-  paymentValue: { type: Number, required: true }, // Jahresgehalt oder Stundensatz
+  company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+  department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
+  paymentType: { type: String, enum: ['yearly', 'hourly'], required: true },
+  paymentValue: { type: Number, required: true },
+  numberOfHolders: { type: Number, default: 0, min: 0 }, // Neues Feld: Anzahl der Rolleninhaber
 });
 
 // Index für die Kombination von Name und Abkürzung (UNIQUE)

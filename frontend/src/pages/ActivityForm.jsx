@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import { Compress } from '@mui/icons-material';
 
 const ActivityForm = ({ activityId, onClose, activities }) => {
   const [activity, setActivity] = useState({
@@ -12,7 +13,7 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
     executedBy: '',
     result: null,
     multiplicator: 1,
-    workMode: '0',
+    workMode: 'Sequential',
     knownTime: '0',
     estimatedTime: '0',
     timeUnit: 'minutes',
@@ -49,10 +50,10 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
             description: activityResponse.description || '',
             abbreviation: activityResponse.abbreviation || '',
             process: activityResponse.process?._id || activityResponse.process || '',
-            executedBy: activityResponse.executedBy || '',
+            executedBy: activityResponse.executedBy?._id || activityResponse.executedBy || '',
             result: activityResponse.result?._id || activityResponse.result || null,
             multiplicator: Number(activityResponse.multiplicator) || 1,
-            workMode: activityResponse.workMode || '0',
+            workMode: activityResponse.workMode || 'Sequential',
             knownTime: String(activityResponse.knownTime) || '0',
             estimatedTime: String(activityResponse.estimatedTime) || '0',
             timeUnit: activityResponse.timeUnit || 'minutes',
@@ -120,7 +121,7 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
       description: activity.description,
       abbreviation: activity.abbreviation,
       process: activity.process,
-      executedBy: activity.executedBy || '67c96682591e42d1eaca08b1',
+      executedBy: activity.executedBy || null,
       result: activity.result || null,
       multiplicator: Number(activity.multiplicator),
       workMode: activity.workMode,
@@ -167,8 +168,17 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
   const availableWorkProducts = getAvailableWorkProducts();
 
   return (
-    <Box sx={{ padding: 2 }}>
-      <Typography variant="h5" gutterBottom>{activityId ? 'Aktivität bearbeiten' : 'Neue Aktivität erstellen'}</Typography>
+    <Box
+      sx={{
+        padding: 2,
+        maxHeight: '80vh', // Maximal 80% der Bildschirmhöhe
+        overflowY: 'auto', // Scrollbar bei Überschreitung
+        bgcolor: 'background.paper',
+      }}
+    >
+      <Typography variant="h6" gutterBottom sx={{ fontSize: '1.1rem' }}>
+        {activityId ? 'Aktivität bearbeiten' : 'Neue Aktivität erstellen'}
+      </Typography>
 
       <TextField
         label="Name"
@@ -176,16 +186,16 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
         onChange={(e) => handleChange('name', e.target.value)}
         fullWidth
         required
-        sx={{ mb: 2 }}
+        sx={{ mb: 1, '& .MuiInputBase-root': { height: 40, fontSize: '0.9rem' } }}
       />
-      <Typography variant="subtitle1">Beschreibung</Typography>
-      <Box sx={{ mb: 2 }}>
+      <Typography variant="subtitle2" sx={{ fontSize: '0.9rem' }}>Beschreibung</Typography>
+      <Box sx={{ mb: 1 }}>
         <ReactQuill
           value={activity.description}
           onChange={(value) => handleChange('description', value)}
           modules={{ toolbar: [['bold', 'italic', 'underline'], ['link']] }}
           formats={['bold', 'italic', 'underline', 'link']}
-          style={{ minHeight: '120px' }} // Mindestens 4 Zeilen (~120px)
+          style={{ minHeight: '80px', fontSize: '0.9rem' }} // Reduzierte Höhe
         />
       </Box>
       <TextField
@@ -194,49 +204,163 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
         onChange={(e) => handleChange('abbreviation', e.target.value)}
         fullWidth
         required
-        sx={{ mb: 2 }}
+        sx={{ mb: 1, '& .MuiInputBase-root': { height: 40, fontSize: '0.9rem' } }}
       />
-      <FormControl fullWidth sx={{ mb: 2 }} required>
-        <InputLabel>Prozess</InputLabel>
+      <FormControl fullWidth sx={{ mb: 1 }}>
+        <InputLabel sx={{ fontSize: '0.9rem' }}>Prozess</InputLabel>
         <Select
           value={activity.process || ''}
           onChange={(e) => handleChange('process', e.target.value)}
           label="Prozess"
+          sx={{ height: 40, fontSize: '0.9rem' }}
         >
           {processes.map(process => (
-            <MenuItem key={process._id} value={process._id}>{process.name}</MenuItem>
+            <MenuItem key={process._id} value={process._id} sx={{ fontSize: '0.9rem' }}>{process.name}</MenuItem>
           ))}
         </Select>
       </FormControl>
 
-      <FormControl fullWidth sx={{ mb: 2 }}>
-        <InputLabel>Work Product produziert</InputLabel>
+      {/* Executed by Role */}
+      <FormControl fullWidth sx={{ mb: 1 }}>
+        <InputLabel sx={{ fontSize: '0.9rem' }}>Ausgeführt von (Rolle)</InputLabel>
+        <Select
+          value={activity.executedBy || ''}
+          onChange={(e) => handleChange('executedBy', e.target.value)}
+          label="Ausgeführt von (Rolle)"
+          sx={{ height: 40, fontSize: '0.9rem' }}
+        >
+          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>Keine Rolle</MenuItem>
+          {roles.map(role => (
+            <MenuItem key={role._id} value={role._id} sx={{ fontSize: '0.9rem' }}>{role.name}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {/* Work Product Produced */}
+      <FormControl fullWidth sx={{ mb: 1 }}>
+        <InputLabel sx={{ fontSize: '0.9rem' }}>Work Product produziert</InputLabel>
         <Select
           value={activity.result || ''}
           onChange={(e) => handleChange('result', e.target.value || null)}
           label="Work Product produziert"
+          sx={{ height: 40, fontSize: '0.9rem' }}
         >
-          <MenuItem value="">Keins</MenuItem>
+          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>Keins</MenuItem>
           {availableWorkProducts.map(wp => (
-            <MenuItem key={wp._id} value={wp._id}>{wp.name}</MenuItem>
+            <MenuItem key={wp._id} value={wp._id} sx={{ fontSize: '0.9rem' }}>{wp.name}</MenuItem>
           ))}
           {activity.result && !availableWorkProducts.some(wp => wp._id === activity.result) && (
-            <MenuItem value={activity.result}>
+            <MenuItem value={activity.result} sx={{ fontSize: '0.9rem' }}>
               {workProducts.find(wp => wp._id === activity.result)?.name || 'Unbekannt'}
             </MenuItem>
           )}
         </Select>
       </FormControl>
 
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="subtitle1">Icon / Bild (optional)</Typography>
-        <input type="file" accept="image/*" onChange={handleFileChange} />
-        {activity.icon && <img src={activity.icon} alt="Icon" style={{ maxWidth: 100, marginTop: 10 }} />}
+      {/* Multiplicator Compressor */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <FormControl sx={{ mr: 1, width: 180 }}>
+          <InputLabel sx={{ fontSize: '0.9rem' }}>Multiplicator Compressor</InputLabel>
+          <Select
+            value={activity.multiplicator > 1 ? 'compress' : 'none'}
+            onChange={(e) => handleChange('multiplicator', e.target.value === 'compress' ? 2 : 1)}
+            label="Multiplicator Compressor"
+            sx={{ height: 40, fontSize: '0.9rem' }}
+            startAdornment={<Compress sx={{ mr: 1, fontSize: '1rem' }} />}
+          >
+            <MenuItem value="none" sx={{ fontSize: '0.9rem' }}>Mal * </MenuItem>
+            <MenuItem value="compress" sx={{ fontSize: '0.9rem' }}>Komprimieren</MenuItem>
+          </Select>
+        </FormControl>
+        <TextField
+          type="number"
+          label="Wert"
+          value={activity.multiplicator}
+          onChange={(e) => handleChange('multiplicator', Number(e.target.value))}
+          sx={{ width: 80, '& .MuiInputBase-root': { height: 40, fontSize: '0.9rem' } }}
+          inputProps={{ min: 1 }}
+        />
       </Box>
 
-      <Box sx={{ mt: 2 }}>
-        <Button variant="contained" onClick={handleSave} sx={{ mr: 2 }}>Speichern</Button>
-        <Button variant="outlined" onClick={onClose}>Abbrechen</Button>
+      {/* Work Mode */}
+      <FormControl fullWidth sx={{ mb: 1 }}>
+        <InputLabel sx={{ fontSize: '0.9rem' }}>Arbeitsmodus</InputLabel>
+        <Select
+          value={activity.workMode}
+          onChange={(e) => handleChange('workMode', e.target.value)}
+          label="Arbeitsmodus"
+          sx={{ height: 40, fontSize: '0.9rem' }}
+        >
+          <MenuItem value="Sequential" sx={{ fontSize: '0.9rem' }}>Sequentiell</MenuItem>
+          <MenuItem value="Parallel" sx={{ fontSize: '0.9rem' }}>Parallel</MenuItem>
+        </Select>
+      </FormControl>
+
+      {/* Time if Known */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <TextField
+          type="number"
+          label="Bekannte Zeit"
+          value={activity.knownTime}
+          onChange={(e) => handleChange('knownTime', e.target.value)}
+          sx={{ mr: 1, width: 120, '& .MuiInputBase-root': { height: 40, fontSize: '0.9rem' } }}
+          inputProps={{ min: 0 }}
+        />
+        <FormControl sx={{ width: 120 }}>
+          <InputLabel sx={{ fontSize: '0.9rem' }}>Einheit</InputLabel>
+          <Select
+            value={activity.timeUnit}
+            onChange={(e) => handleChange('timeUnit', e.target.value)}
+            label="Einheit"
+            sx={{ height: 40, fontSize: '0.9rem' }}
+          >
+            <MenuItem value="minutes" sx={{ fontSize: '0.9rem' }}>Minuten</MenuItem>
+            <MenuItem value="hours" sx={{ fontSize: '0.9rem' }}>Stunden</MenuItem>
+            <MenuItem value="days" sx={{ fontSize: '0.9rem' }}>Tage</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {/* Time if New (Estimated) */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <TextField
+          type="number"
+          label="Geschätzte Zeit"
+          value={activity.estimatedTime}
+          onChange={(e) => handleChange('estimatedTime', e.target.value)}
+          sx={{ mr: 1, width: 120, '& .MuiInputBase-root': { height: 40, fontSize: '0.9rem' } }}
+          inputProps={{ min: 0 }}
+        />
+        <FormControl sx={{ width: 120 }}>
+          <InputLabel sx={{ fontSize: '0.9rem' }}>Einheit</InputLabel>
+          <Select
+            value={activity.timeUnit}
+            onChange={(e) => handleChange('timeUnit', e.target.value)}
+            label="Einheit"
+            sx={{ height: 40, fontSize: '0.9rem' }}
+          >
+            <MenuItem value="minutes" sx={{ fontSize: '0.9rem' }}>Minuten</MenuItem>
+            <MenuItem value="hours" sx={{ fontSize: '0.9rem' }}>Stunden</MenuItem>
+            <MenuItem value="days" sx={{ fontSize: '0.9rem' }}>Tage</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {/* Icon Upload */}
+      <Box sx={{ mb: 1 }}>
+        <Typography variant="subtitle2" sx={{ fontSize: '0.9rem' }}>Icon / Bild (optional)</Typography>
+        <input type="file" accept="image/*" onChange={handleFileChange} style={{ fontSize: '0.9rem' }} />
+        {activity.icon && <img src={activity.icon} alt="Icon" style={{ maxWidth: 80, marginTop: 5 }} />}
+      </Box>
+
+      {/* Buttons */}
+      <Box sx={{ mt: 1, position: 'sticky', bottom: 0, bgcolor: 'background.paper', p: 1 }}>
+        <Button variant="contained" onClick={handleSave} sx={{ mr: 1, fontSize: '0.9rem', padding: '4px 8px' }}>
+          Speichern
+        </Button>
+        <Button variant="outlined" onClick={onClose} sx={{ fontSize: '0.9rem', padding: '4px 8px' }}>
+          Abbrechen
+        </Button>
       </Box>
     </Box>
   );

@@ -336,33 +336,53 @@ app.get('/api/processes/:id', async (req, res) => {
   }
 });
 
+const mongoose = require('mongoose');
+const Process = require('./models/Process'); // Annahme: Dein Process-Modell
+
 app.put('/api/processes/:id', async (req, res) => {
   try {
-    const processId = new mongoose.Types.ObjectId(req.params.id);
-    console.log('Empfangene Daten:', JSON.stringify(req.body, null, 2));
-    const cleanedProcess = {
-      ...req.body,
-      processGroup: req.body.processGroup ? new mongoose.Types.ObjectId(req.body.processGroup) : null,
-      owner: req.body.owner ? new mongoose.Types.ObjectId(req.body.owner) : null,
-    };
+    const { id } = req.params;
+
+    // Validierung der Prozess-ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Ungültige Prozess-ID' });
+    }
+
+    // Nur editierbare Felder aus dem Body extrahieren
+    const { name, abbreviation } = req.body;
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (abbreviation !== undefined) updateData.abbreviation = abbreviation;
+
+    // Debugging: Empfangene Daten loggen
+    console.log('Empfangene Daten:', JSON.stringify(updateData, null, 2));
+
+    // Prozess aktualisieren
     const updatedProcess = await Process.findByIdAndUpdate(
-      processId,
-      cleanedProcess,
-      { new: true, runValidators: true, upsert: false }
+      id,
+      updateData,
+      { new: true, runValidators: true }
     ).populate('owner processGroup');
+
     if (!updatedProcess) {
       return res.status(404).json({ error: 'Prozess nicht gefunden' });
     }
+
     res.json(updatedProcess);
   } catch (error) {
     console.error('Fehler beim Bearbeiten des Prozesses:', error);
+
+    // Spezifische Fehlerbehandlung
     if (error.name === 'ValidationError') {
-      return res.status(400).json({ error: 'Validierungsfehler: ' + Object.values(error.errors).map(e => e.message).join(', ') });
+      return res.status(400).json({ 
+        error: 'Validierungsfehler', 
+        details: Object.values(error.errors).map(e => e.message) 
+      });
     }
     if (error.name === 'CastError') {
-      return res.status(400).json({ error: 'Ungültige Prozess-ID oder Datenformat: ' + error.message });
+      return res.status(400).json({ error: 'Ungültiges Datenformat', details: error.message });
     }
-    res.status(500).json({ error: 'Interner Serverfehler: ' + error.message });
+    res.status(500).json({ error: 'Interner Serverfehler', details: error.message });
   }
 });
 

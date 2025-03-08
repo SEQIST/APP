@@ -16,12 +16,12 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   MarkerType,
+  Handle,
 } from '@xyflow/react';
 import dagre from 'dagre';
 import '@xyflow/react/dist/style.css';
 import { Person, Inventory } from '@mui/icons-material';
 
-// Dagre Graph für Layout
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 const getLayoutedElements = (nodes, edges) => {
   dagreGraph.setGraph({ rankdir: 'TB' });
@@ -48,7 +48,6 @@ const getLayoutedElements = (nodes, edges) => {
   };
 };
 
-// Benutzerdefinierter Knoten-Typ
 const CustomNode = ({ data }) => {
   return (
     <Box
@@ -65,20 +64,19 @@ const CustomNode = ({ data }) => {
         position: 'relative',
       }}
     >
-      {/* Target und Source Handles */}
-      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0 }}>
-        <div type="target" style={{ background: 'transparent', border: 'none' }} />
-      </div>
-      <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0 }}>
-        <div type="source" style={{ background: 'transparent', border: 'none' }} />
-      </div>
-
-      {/* Name der Aktivität (oben) */}
+      <Handle
+        type="target"
+        position="top"
+        style={{ background: '#555', borderRadius: '50%' }}
+      />
+      <Handle
+        type="source"
+        position="bottom"
+        style={{ background: '#555', borderRadius: '50%' }}
+      />
       <Typography variant="subtitle1" sx={{ textAlign: 'center', fontWeight: 'bold' }}>
         {data.label}
       </Typography>
-
-      {/* Responsible und Work Product (unten, nebeneinander) */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Person sx={{ fontSize: 16, mr: 0.5 }} />
@@ -92,6 +90,8 @@ const CustomNode = ({ data }) => {
     </Box>
   );
 };
+
+const nodeTypes = { custom: CustomNode };
 
 const EditProcess = () => {
   const { id } = useParams();
@@ -121,6 +121,7 @@ const EditProcess = () => {
         const filteredActivities = activitiesData.filter(
           (activity) => activity.process === id || activity.process?._id === id
         );
+        console.log('Gefilterte Aktivitäten:', filteredActivities);
         setActivities(filteredActivities);
 
         setLoading(false);
@@ -138,22 +139,26 @@ const EditProcess = () => {
       const response = await fetch(`http://localhost:5001/api/processes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(process),
+        body: JSON.stringify({
+          name: process.name,
+          abbreviation: process.abbreviation, // Nur editierbare Felder senden
+        }),
       });
       if (!response.ok) {
-        throw new Error('Fehler beim Speichern des Prozesses');
+        const errorData = await response.json();
+        throw new Error(`Fehler beim Speichern des Prozesses: ${errorData.error}`);
       }
       const updatedProcess = await response.json();
       setProcess(updatedProcess);
       alert('Prozess erfolgreich aktualisiert');
     } catch (error) {
       setError(error.message);
+      console.error('Fehler:', error);
     }
   };
 
   useEffect(() => {
     if (activities.length > 0) {
-      // Baue Knoten für Aktivitäten
       const activityNodes = activities.map((activity) => ({
         id: activity._id,
         type: 'custom',
@@ -161,34 +166,40 @@ const EditProcess = () => {
           label: activity.name,
           executedByName: activity.executedBy?.name || 'Unbekannt',
           resultName: activity.result?.name || 'Keins',
-          resultId: activity.result?._id || activity.result, // Speichere die ID für Kanten
+          resultId: activity.result?._id || activity.result,
         },
         position: { x: 0, y: 0 },
         draggable: true,
       }));
 
-      // Baue Kanten: Vom Work Product (result) zur Aktivität mit passendem Trigger
       const activityEdges = [];
       let edgeIdCounter = 0;
 
       activities.forEach((sourceActivity) => {
         const sourceResultId = sourceActivity.result?._id || sourceActivity.result;
 
-        if (!sourceResultId) return;
+        if (!sourceResultId) {
+          console.log(`Keine Ergebnis-ID für Aktivität ${sourceActivity.name}`);
+          return;
+        }
 
         activities.forEach((targetActivity) => {
           if (sourceActivity._id === targetActivity._id) return;
 
           const hasTrigger = targetActivity.trigger?.workProducts?.some((wp) => {
             const wpId = wp._id?._id ? wp._id._id.toString() : wp._id.toString();
-            return wpId === sourceResultId.toString();
+            const match = wpId === sourceResultId.toString();
+            if (match) {
+              console.log(`Match gefunden: ${sourceActivity.name} (Result: ${sourceResultId}) -> ${targetActivity.name} (Trigger: ${wpId})`);
+            }
+            return match;
           });
 
           if (hasTrigger) {
-            activityEdges.push({
+            const edge = {
               id: `e${edgeIdCounter++}`,
-              source: sourceActivity._id, // Quelle: Aktivität, die das Work Product produziert
-              target: targetActivity._id, // Ziel: Aktivität, die das Work Product als Trigger hat
+              source: sourceActivity._id,
+              target: targetActivity._id,
               type: 'step',
               markerEnd: {
                 type: MarkerType.ArrowClosed,
@@ -197,12 +208,16 @@ const EditProcess = () => {
                 color: '#333',
               },
               style: { stroke: '#333', strokeWidth: 2 },
-            });
+            };
+            console.log('Kante erstellt:', edge);
+            activityEdges.push(edge);
           }
         });
       });
 
-      // Layout anwenden
+      console.log('Erstellte Knoten:', activityNodes);
+      console.log('Erstellte Kanten:', activityEdges);
+
       const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(activityNodes, activityEdges);
       setNodes(layoutedNodes);
       setEdges(layoutedEdges);
@@ -254,19 +269,9 @@ const EditProcess = () => {
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            nodeTypes={{ custom: CustomNode }}
+            nodeTypes={nodeTypes}
             style={{ width: '100%', height: '100%' }}
             fitView
-            defaultEdgeOptions={{
-              type: 'step',
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-                width: 20,
-                height: 20,
-                color: '#333',
-              },
-              style: { stroke: '#333', strokeWidth: 2 },
-            }}
           >
             <Background color="#aaa" gap={16} />
             <Controls />

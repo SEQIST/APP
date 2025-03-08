@@ -18,7 +18,8 @@ const Roles = () => {
     description: '', 
     department: '', 
     paymentType: 'yearly', 
-    paymentValue: '' 
+    paymentValue: '', 
+    numberOfHolders: 0 // Neues Feld
   });
   const [newTask, setNewTask] = useState({ 
     role: '', 
@@ -117,7 +118,7 @@ const Roles = () => {
       })
       .then(data => {
         setRoles([...roles, data]);
-        setNewRole({ name: '', abbreviation: '', description: '', department: '', paymentType: 'yearly', paymentValue: '' });
+        setNewRole({ name: '', abbreviation: '', description: '', department: '', paymentType: 'yearly', paymentValue: '', numberOfHolders: 0 });
       })
       .catch(error => console.error('Fehler beim Hinzufügen der Rolle:', error));
   };
@@ -141,7 +142,7 @@ const Roles = () => {
   const handleDeleteRole = (id) => {
     fetch(`http://localhost:5001/api/roles/${id}`, { method: 'DELETE' })
       .then(response => {
-        if (!response.ok) throw new Error(`HTTP-Fehler! Status: ${r.status} - ${r.statusText}`);
+        if (!response.ok) throw new Error(`HTTP-Fehler! Status: ${response.status} - ${response.statusText}`);
         setRoles(roles.filter(r => r._id !== id));
       })
       .catch(error => console.error('Fehler beim Löschen der Rolle:', error));
@@ -179,7 +180,6 @@ const Roles = () => {
     setOpenTaskDialog(true);
   };
 
-  // Prüfen, ob repetitive Loads existieren
   const hasRepetitiveLoad = (roleId) => tasks.filter(t => t.role._id === roleId).length > 0;
 
   if (loading) return <Typography sx={{ fontSize: '0.75rem' }}>Lade Rollen...</Typography>;
@@ -240,6 +240,14 @@ const Roles = () => {
             sx={{ ml: 0.5, width: 120, fontSize: '0.75rem' }} 
           />
         </Box>
+        <TextField
+          label="Anzahl Rolleninhaber"
+          type="number"
+          value={newRole.numberOfHolders}
+          onChange={(e) => setNewRole({ ...newRole, numberOfHolders: Number(e.target.value) || 0 })}
+          sx={{ mr: 0.5, width: 120, fontSize: '0.75rem' }}
+          inputProps={{ min: 0 }}
+        />
         <Button variant="contained" onClick={handleAddRole} sx={{ fontSize: '0.75rem' }}>
           Hinzufügen
         </Button>
@@ -252,6 +260,7 @@ const Roles = () => {
             <TableCell sx={{ fontSize: '0.75rem' }}>Beschreibung</TableCell>
             <TableCell sx={{ fontSize: '0.75rem' }}>Abteilung</TableCell>
             <TableCell sx={{ fontSize: '0.75rem' }}>Zahlung</TableCell>
+            <TableCell sx={{ fontSize: '0.75rem' }}>Rolleninhaber</TableCell>
             <TableCell sx={{ fontSize: '0.75rem' }}>Std/Tag (Max Load)</TableCell>
             <TableCell sx={{ fontSize: '0.75rem' }}>Std/Tag (Verfügbar)</TableCell>
             <TableCell sx={{ fontSize: '0.75rem' }}>Aktionen</TableCell>
@@ -326,10 +335,20 @@ const Roles = () => {
                   </Box>
                 </TableCell>
                 <TableCell>
-                  <Typography sx={{ fontSize: '0.75rem' }}>{workHoursDayMaxLoad}</Typography> {/* Kein TextField mehr */}
+                  <TextField
+                    value={role.numberOfHolders || 0}
+                    onChange={(e) => handleEditRole(role._id, { ...role, numberOfHolders: Number(e.target.value) || 0 })}
+                    type="number"
+                    size="small"
+                    sx={{ fontSize: '0.75rem' }}
+                    inputProps={{ min: 0 }}
+                  />
                 </TableCell>
                 <TableCell>
-                  <Typography sx={{ fontSize: '0.75rem' }}>{availableDailyHours}</Typography> {/* Entspricht der Darstellung */}
+                  <Typography sx={{ fontSize: '0.75rem' }}>{workHoursDayMaxLoad}</Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography sx={{ fontSize: '0.75rem' }}>{availableDailyHours}</Typography>
                 </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -365,7 +384,7 @@ const Roles = () => {
             <TextField 
               label="Wie oft" 
               type="number" 
-              value={newTask.frequency} 
+              valueassing={newTask.frequency} 
               onChange={(e) => setNewTask({ ...newTask, frequency: parseInt(e.target.value, 10) || 1 })} 
               sx={{ mr: 0.5, mt: 2, width: 80, fontSize: '0.75rem' }} 
             />

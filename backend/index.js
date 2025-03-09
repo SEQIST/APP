@@ -336,28 +336,30 @@ app.get('/api/processes/:id', async (req, res) => {
   }
 });
 
-const mongoose = require('mongoose');
-const Process = require('./models/Process'); // Annahme: Dein Process-Modell
+// const mongoose = require('mongoose');
+//const Process = require('./models/Process'); // Annahme: Dein Process-Modell
 
 app.put('/api/processes/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Validierung der Prozess-ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: 'Ungültige Prozess-ID' });
     }
 
-    // Nur editierbare Felder aus dem Body extrahieren
-    const { name, abbreviation } = req.body;
+    const { name, abbreviation, workProducts } = req.body;
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (abbreviation !== undefined) updateData.abbreviation = abbreviation;
+    if (workProducts !== undefined) {
+      updateData.workProducts = workProducts.map(wp => ({
+        workProductId: new mongoose.Types.ObjectId(wp.workProductId),
+        known: Number(wp.known) || 0,
+        unknown: Number(wp.unknown) || 0,
+      }));
+    }
 
-    // Debugging: Empfangene Daten loggen
     console.log('Empfangene Daten:', JSON.stringify(updateData, null, 2));
 
-    // Prozess aktualisieren
     const updatedProcess = await Process.findByIdAndUpdate(
       id,
       updateData,
@@ -371,13 +373,8 @@ app.put('/api/processes/:id', async (req, res) => {
     res.json(updatedProcess);
   } catch (error) {
     console.error('Fehler beim Bearbeiten des Prozesses:', error);
-
-    // Spezifische Fehlerbehandlung
     if (error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        error: 'Validierungsfehler', 
-        details: Object.values(error.errors).map(e => e.message) 
-      });
+      return res.status(400).json({ error: 'Validierungsfehler', details: Object.values(error.errors).map(e => e.message) });
     }
     if (error.name === 'CastError') {
       return res.status(400).json({ error: 'Ungültiges Datenformat', details: error.message });

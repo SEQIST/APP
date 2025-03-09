@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
 import Project from './pages/Project';
@@ -9,7 +9,7 @@ import ProcessGroups from './pages/ProcessGroups';
 import Processes from './pages/Processes';
 import ProcessFlow from './pages/ProcessFlow';
 import GanttSimulation from './pages/GanttSimulation';
-import Activities from './pages/Activities'; // Platzhalter-Komponente
+import Activities from './pages/Activities';
 import WorkProducts from './pages/WorkProducts';
 import Queries from './pages/Queries';
 import Settings from './pages/Settings';
@@ -25,28 +25,61 @@ import TriggerList from './pages/TriggerList';
 import TriggerPage from './pages/TriggerPage';
 import TriggerForm from './pages/TriggerForm';
 import TriggerEdit from './pages/TriggerEdit';
-import ActivityForm from './pages/ActivityForm'; // Bereits importiert
+import ActivityForm from './pages/ActivityForm';
+
+// Wrapper-Komponente für ActivityForm in Routen
+const ActivityFormWrapper = ({ activities }) => {
+  const navigate = useNavigate();
+  const { activityId } = useParams();
+
+  const handleSave = (updatedActivity) => {
+    console.log('Aktivität gespeichert:', updatedActivity);
+    navigate('/activities');
+  };
+
+  const handleClose = () => {
+    navigate('/activities');
+  };
+
+  return (
+    <ActivityForm 
+      activityId={activityId}
+      onSave={handleSave}
+      onClose={handleClose}
+      activities={activities}
+    />
+  );
+};
 
 const App = () => {
   const [triggers, setTriggers] = useState([]);
+  const [activities, setActivities] = useState([]); // Neuer globaler State
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchTriggers = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:5001/api/triggers');
-        if (!response.ok) throw new Error('Fehler beim Laden der Trigger');
-        const data = await response.json();
-        setTriggers(Array.isArray(data) ? data : []);
+        const [triggersResponse, activitiesResponse] = await Promise.all([
+          fetch('http://localhost:5001/api/triggers'),
+          fetch('http://localhost:5001/api/activities'),
+        ]);
+        if (!triggersResponse.ok) throw new Error('Fehler beim Laden der Trigger');
+        if (!activitiesResponse.ok) throw new Error('Fehler beim Laden der Aktivitäten');
+        
+        const triggersData = await triggersResponse.json();
+        const activitiesData = await activitiesResponse.json();
+        
+        setTriggers(Array.isArray(triggersData) ? triggersData : []);
+        setActivities(Array.isArray(activitiesData) ? activitiesData : []);
         setLoading(false);
       } catch (error) {
-        console.error('Fehler beim Laden der Trigger:', error);
+        console.error('Fehler beim Laden der Daten:', error);
         setError(error.message);
         setLoading(false);
       }
     };
-    fetchTriggers();
+    fetchData();
   }, []);
 
   const addTrigger = async (newTrigger) => {
@@ -87,7 +120,7 @@ const App = () => {
     }
   };
 
-  if (loading) return <div>Lade Trigger...</div>;
+  if (loading) return <div>Lade Daten...</div>;
   if (error) return <div>Fehler: {error}</div>;
 
   return (
@@ -109,9 +142,9 @@ const App = () => {
               <Route path="/triggers/new" element={<TriggerForm addTrigger={addTrigger} />} />
               <Route path="/triggers/edit/:triggerId" element={<TriggerEdit updateTrigger={updateTrigger} />} />
               <Route path="/gantt-simulation" element={<GanttSimulation />} />
-              <Route path="/activities" element={<Activities />} /> {/* Übersicht */}
-              <Route path="/activities/new" element={<ActivityForm />} /> {/* Neue Aktivität */}
-              <Route path="/activities/edit/:activityId" element={<ActivityForm />} /> {/* Bearbeiten */}
+              <Route path="/activities" element={<Activities />} />
+              <Route path="/activities/new" element={<ActivityFormWrapper activities={activities} />} />
+              <Route path="/activities/edit/:activityId" element={<ActivityFormWrapper activities={activities} />} />
               <Route path="/work-products" element={<WorkProducts />} />
               <Route path="/queries" element={<Queries />} />
               <Route path="/settings" element={<Settings />} />

@@ -9,7 +9,10 @@ const Activities = () => {
   const [processes, setProcesses] = useState([]);
   const [workProducts, setWorkProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortOption, setSortOption] = useState('name'); // Standard-Sortierung nach Name
+  const [sortOption, setSortOption] = useState('name');
+  const [openActivityModal, setOpenActivityModal] = useState(false);
+  const [openTriggerModal, setOpenTriggerModal] = useState(false);
+  const [selectedActivityId, setSelectedActivityId] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -47,6 +50,15 @@ const Activities = () => {
     refreshActivities();
   };
 
+  const handleActivitySave = (updatedActivity) => {
+    setActivities(prev => 
+      selectedActivityId 
+        ? prev.map(a => a._id === updatedActivity._id ? updatedActivity : a)
+        : [...prev, updatedActivity]
+    );
+    handleCloseActivityModal();
+  };
+
   const handleDelete = (id) => {
     fetch(`http://localhost:5001/api/activities/${id}`, {
       method: 'DELETE',
@@ -64,7 +76,6 @@ const Activities = () => {
       .catch(error => console.error('Fehler beim Aktualisieren der Aktivitäten:', error));
   };
 
-  // Filter- und Sortierlogik
   const filteredAndSortedActivities = activities
     .filter(activity => 
       activity.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -90,10 +101,6 @@ const Activities = () => {
           return 0;
       }
     });
-
-  const [openActivityModal, setOpenActivityModal] = useState(false);
-  const [openTriggerModal, setOpenTriggerModal] = useState(false);
-  const [selectedActivityId, setSelectedActivityId] = useState(null);
 
   return (
     <Box sx={{ padding: 4 }}>
@@ -151,7 +158,12 @@ const Activities = () => {
 
       <Modal open={openActivityModal} onClose={handleCloseActivityModal}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', bgcolor: 'background.paper', p: 4, minWidth: 400 }}>
-          <ActivityForm activityId={selectedActivityId} onClose={handleCloseActivityModal} activities={activities} />
+          <ActivityForm 
+            activityId={selectedActivityId} 
+            onClose={handleCloseActivityModal} 
+            onSave={handleActivitySave} // Neu hinzugefügt
+            activities={activities} 
+          />
         </Box>
       </Modal>
 

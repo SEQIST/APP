@@ -1,7 +1,9 @@
 import React from 'react'; // Importiere React für JSX
 import { Drawer, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
-import { Home, Work, People, Settings, Business, Group, LocationOn } from '@mui/icons-material';
+import { Home, Work, People, Settings, Business, Group, LocationOn, AccountTree, Hub, QueryBuilder, Schema } from '@mui/icons-material';
 import { Link, useLocation } from 'react-router-dom'; // Füge useLocation hinzu für aktive Navigation
+
+
 
 const Sidebar = () => {
   const location = useLocation(); // Hole die aktuelle URL, um aktive Elemente zu markieren
@@ -12,19 +14,19 @@ const Sidebar = () => {
     { text: 'Gantt des Projektes', icon: <Work />, path: '/gantt-project' },
     { text: 'Kunden', icon: <People />, path: '/customers' },
     { text: 'Prozessgruppen', icon: <Group />, path: '/process-groups' },
-    { text: 'Prozesse', icon: <Work />, path: '/processes' },
-    { text: 'Prozesse edit', icon: <Work />, path: '/edit-processes' },
+    { text: 'Prozesse', icon: <AccountTree />, path: '/processes' },
+//    { text: 'Prozesse edit', icon: <Work />, path: '/edit-processes' },
     { text: 'Flow der Prozesse', icon: <Work />, path: '/process-flow' },
-    { text: 'Trigger', icon: <Work />, path: '/trigger-page' },
-    { text: 'TriggerForm', icon: <Work />, path: '/trigger-form' },
+ //   { text: 'Trigger', icon: <Work />, path: '/trigger-page' },
+ //   { text: 'TriggerForm', icon: <Work />, path: '/trigger-form' },
     { text: 'TriggerList', icon: <Work />, path: '/trigger-list' },
     { text: 'Gantt der Simulation', icon: <Work />, path: '/gantt-simulation' },
     { text: 'Aktivitäten', icon: <Work />, path: '/activities' },
     { text: 'Arbeitsprodukte', icon: <Work />, path: '/work-products' },
-    { text: 'Abfragen', icon: <Work />, path: '/queries' },
+    { text: 'Abfragen', icon: <QueryBuilder />, path: '/queries' },
     { text: 'Einstellungen', icon: <Settings />, path: '/settings' },
     { text: 'Organisation', icon: <Business />, path: '/organization' },
-    { text: 'Flow ansicht', icon: <Business />, path: '/departments-flow' },
+    { text: 'Flow ansicht', icon: <Hub />, path: '/departments-flow' },
     { text: 'Abteilungen', icon: <Group />, path: '/departments' },
     { text: 'Rollen', icon: <Group />, path: '/roles' },
     { text: 'Standorte', icon: <LocationOn />, path: '/locations' },

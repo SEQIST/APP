@@ -8,7 +8,7 @@ const activitySchema = new mongoose.Schema({
   process: { type: mongoose.Schema.Types.ObjectId, ref: 'Process' },
   result: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkProduct' },
   multiplicator: { type: Number, default: 1 },
-  workMode: { type: String, default: '0' },
+  compressor: { type: String, enum: ['multiply', 'compress'], default: 'multiply' },
   knownTime: { type: String, default: '0' },
   estimatedTime: { type: String, default: '0' },
   timeUnit: { type: String, default: 'minutes' },

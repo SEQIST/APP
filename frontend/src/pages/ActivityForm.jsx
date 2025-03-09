@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { Compress } from '@mui/icons-material';
+import { Expand, Compress } from '@mui/icons-material';
 
-const ActivityForm = ({ activityId, onClose, activities }) => {
+const ActivityForm = ({ activityId, onClose, onSave, activities }) => {
   const [activity, setActivity] = useState({
     name: '',
     description: '',
@@ -13,6 +13,7 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
     executedBy: '',
     result: null,
     multiplicator: 1,
+    compressor: 'multiply', // Default angepasst
     workMode: 'Sequential',
     knownTime: '0',
     estimatedTime: '0',
@@ -53,6 +54,7 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
             executedBy: activityResponse.executedBy?._id || activityResponse.executedBy || '',
             result: activityResponse.result?._id || activityResponse.result || null,
             multiplicator: Number(activityResponse.multiplicator) || 1,
+            compressor: activityResponse.compressor || 'multiply', // Vom Backend laden
             workMode: activityResponse.workMode || 'Sequential',
             knownTime: String(activityResponse.knownTime) || '0',
             estimatedTime: String(activityResponse.estimatedTime) || '0',
@@ -78,13 +80,9 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
     const usedWorkProductIds = new Set();
     activities.forEach(act => {
       if (act._id !== activityId) {
-        if (act.result) {
-          usedWorkProductIds.add((act.result._id || act.result).toString());
-        }
+        if (act.result) usedWorkProductIds.add((act.result._id || act.result).toString());
         if (act.trigger?.workProducts) {
-          act.trigger.workProducts.forEach(wp => {
-            usedWorkProductIds.add((wp._id._id || wp._id).toString());
-          });
+          act.trigger.workProducts.forEach(wp => usedWorkProductIds.add((wp._id._id || wp._id).toString()));
         }
       }
     });
@@ -96,20 +94,26 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
   };
 
   const handleSave = async () => {
+    console.log('handleSave aufgerufen mit:', activity);
+
     if (!activity.name) {
       setError('Name ist erforderlich');
+      console.log('Validierung fehlgeschlagen: Name fehlt');
       return;
     }
     if (!activity.description) {
       setError('Beschreibung ist erforderlich');
+      console.log('Validierung fehlgeschlagen: Beschreibung fehlt');
       return;
     }
     if (!activity.abbreviation) {
       setError('Abkürzung ist erforderlich');
+      console.log('Validierung fehlgeschlagen: Abkürzung fehlt');
       return;
     }
     if (!activity.process || !/^[0-9a-fA-F]{24}$/.test(activity.process)) {
       setError('Eine gültige Process-ID ist erforderlich.');
+      console.log('Validierung fehlgeschlagen: Ungültige Process-ID');
       return;
     }
 
@@ -124,6 +128,7 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
       executedBy: activity.executedBy || null,
       result: activity.result || null,
       multiplicator: Number(activity.multiplicator),
+      compressor: activity.compressor, // Mit senden
       workMode: activity.workMode,
       knownTime: activity.knownTime,
       estimatedTime: activity.estimatedTime,
@@ -134,17 +139,35 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
       trigger: activityId ? undefined : { workProducts: [], determiningFactorId: null },
     };
 
+    console.log('Sende Daten an API:', cleanedActivity);
+
     try {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cleanedActivity),
       });
+
+      console.log('API-Antwort Status:', response.status);
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('API-Fehlerdetails:', errorData);
         throw new Error(`HTTP-Fehler! Status: ${response.status} - ${errorData.error || 'Unbekannter Fehler'}`);
       }
-      onClose();
+
+      const updatedActivity = await response.json();
+      console.log('API-Antwort Daten:', updatedActivity);
+
+      if (typeof onSave === 'function') {
+        onSave(updatedActivity);
+      } else {
+        console.warn('onSave ist keine Funktion; State wird nicht aktualisiert');
+      }
+      if (typeof onClose === 'function') {
+        onClose();
+      } else {
+        console.warn('onClose ist keine Funktion; Modal wird nicht geschlossen');
+      }
     } catch (error) {
       console.error('Fehler beim Speichern der Aktivität:', error);
       setError(error.message);
@@ -155,9 +178,7 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setActivity(prev => ({ ...prev, icon: reader.result }));
-      };
+      reader.onloadend = () => setActivity(prev => ({ ...prev, icon: reader.result }));
       reader.readAsDataURL(file);
     }
   };
@@ -171,8 +192,8 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
     <Box
       sx={{
         padding: 2,
-        maxHeight: '80vh', // Maximal 80% der Bildschirmhöhe
-        overflowY: 'auto', // Scrollbar bei Überschreitung
+        maxHeight: '80vh',
+        overflowY: 'auto',
         bgcolor: 'background.paper',
       }}
     >
@@ -195,7 +216,7 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
           onChange={(value) => handleChange('description', value)}
           modules={{ toolbar: [['bold', 'italic', 'underline'], ['link']] }}
           formats={['bold', 'italic', 'underline', 'link']}
-          style={{ minHeight: '80px', fontSize: '0.9rem' }} // Reduzierte Höhe
+          style={{ minHeight: '80px', fontSize: '0.9rem' }}
         />
       </Box>
       <TextField
@@ -260,23 +281,29 @@ const ActivityForm = ({ activityId, onClose, activities }) => {
       {/* Multiplicator Compressor */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
         <FormControl sx={{ mr: 1, width: 180 }}>
-          <InputLabel sx={{ fontSize: '0.9rem' }}>Multiplicator Compressor</InputLabel>
+          <InputLabel sx={{ fontSize: '0.9rem' }}>Multiplicator Typ</InputLabel>
           <Select
-            value={activity.multiplicator > 1 ? 'compress' : 'none'}
-            onChange={(e) => handleChange('multiplicator', e.target.value === 'compress' ? 2 : 1)}
-            label="Multiplicator Compressor"
+            value={activity.compressor}
+            onChange={(e) => handleChange('compressor', e.target.value)}
+            label="Multiplicator Typ"
             sx={{ height: 40, fontSize: '0.9rem' }}
-            startAdornment={<Compress sx={{ mr: 1, fontSize: '1rem' }} />}
+            startAdornment={
+              activity.compressor === 'compress' ? (
+                <Compress sx={{ mr: 1, fontSize: '1rem' }} />
+              ) : (
+                <Expand sx={{ mr: 1, fontSize: '1rem' }} />
+              )
+            }
           >
-            <MenuItem value="none" sx={{ fontSize: '0.9rem' }}>Mal * </MenuItem>
-            <MenuItem value="compress" sx={{ fontSize: '0.9rem' }}>Komprimieren</MenuItem>
+            <MenuItem value="multiply" sx={{ fontSize: '0.9rem' }}>Multiply</MenuItem>
+            <MenuItem value="compress" sx={{ fontSize: '0.9rem' }}>Compress</MenuItem>
           </Select>
         </FormControl>
         <TextField
           type="number"
-          label="Wert"
+          label="Multiplicator Wert"
           value={activity.multiplicator}
-          onChange={(e) => handleChange('multiplicator', Number(e.target.value))}
+          onChange={(e) => handleChange('multiplicator', Number(e.target.value) || 1)}
           sx={{ width: 80, '& .MuiInputBase-root': { height: 40, fontSize: '0.9rem' } }}
           inputProps={{ min: 1 }}
         />

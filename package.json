@@ -24,5 +24,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "react-gantt-timeline": "^0.4.3"
+  }
 }

@@ -1,101 +1,180 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Button, TextField, FormControl, InputLabel, Select, MenuItem, IconButton, Typography } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+// src/pages/ProcessSimulationTab.jsx
 
-const ProcessSimulationTab = ({ process, setProcess }) => {
-  const [workProducts, setWorkProducts] = useState([]);
-  const [newEntry, setNewEntry] = useState({ workProductId: '', known: '', unknown: '' });
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Button, Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, TextField } from '@mui/material';
+
+const ProcessSimulationTab = ({ simulationData, setSimulationData, activities, workProducts }) => {
+  const [editIndex, setEditIndex] = useState(null);
+  const [editedValues, setEditedValues] = useState({ known: '', unknown: '' });
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newWorkProduct, setNewWorkProduct] = useState(null);
+  const [availableWorkProducts, setAvailableWorkProducts] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:5001/api/workproducts')
-      .then(r => r.json())
-      .then(data => setWorkProducts(data || []));
-    setNewEntry({ workProductId: '', known: '', unknown: '' }); // Reset bei Mount
-  }, []);
+    // Nutze die vollständige Work-Product-Liste
+    if (workProducts) {
+      const wpList = workProducts.map(wp => ({
+        name: wp._id,
+        label: wp.name,
+      }));
+      setAvailableWorkProducts(wpList);
+      console.log('Verfügbare Work Products:', wpList);
+    }
+  }, [workProducts]);
 
-  const handleAdd = () => {
-    if (!newEntry.workProductId || (!newEntry.known && !newEntry.unknown)) {
-      alert('Mindestens ein Wert (bekannt oder unbekannt) muss angegeben werden.');
-      return;
-    }
-    if ((newEntry.known && Number(newEntry.known) <= 0) || (newEntry.unknown && Number(newEntry.unknown) <= 0)) {
-      alert('Werte müssen größer als 0 sein.');
-      return;
-    }
-    const updatedWorkProducts = [
-      ...(process.workProducts || []),
-      { workProductId: newEntry.workProductId, known: Number(newEntry.known) || 0, unknown: Number(newEntry.unknown) || 0 }
-    ];
-    setProcess({ ...process, workProducts: updatedWorkProducts });
-    setNewEntry({ workProductId: '', known: '', unknown: '' });
+  const handleEdit = (index) => {
+    setEditIndex(index);
+    const wp = simulationData.workProducts[index];
+    setEditedValues({ known: wp.known || '', unknown: wp.unknown || '' });
+  };
+
+  const handleSave = (index) => {
+    const updatedWorkProducts = [...simulationData.workProducts];
+    updatedWorkProducts[index] = { ...updatedWorkProducts[index], known: parseInt(editedValues.known), unknown: parseInt(editedValues.unknown) };
+    setSimulationData({ ...simulationData, workProducts: updatedWorkProducts });
+    setEditIndex(null);
+    console.log('Aktualisierte Simulationsdaten:', { ...simulationData, workProducts: updatedWorkProducts });
   };
 
   const handleDelete = (index) => {
-    const updatedWorkProducts = (process.workProducts || []).filter((_, i) => i !== index);
-    setProcess({ ...process, workProducts: updatedWorkProducts });
+    const updatedWorkProducts = [...simulationData.workProducts];
+    updatedWorkProducts.splice(index, 1); // Entfernt das Work Product an der angegebenen Position
+    setSimulationData({ ...simulationData, workProducts: updatedWorkProducts });
+    console.log('Work Product gelöscht, aktualisierte Simulationsdaten:', { ...simulationData, workProducts: updatedWorkProducts });
   };
 
-  const handleSave = async () => {
-    try {
-      const response = await fetch(`http://localhost:5001/api/processes/${process._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workProducts: process.workProducts }),
-      });
-      if (!response.ok) throw new Error('Fehler beim Speichern');
-      const updatedProcess = await response.json();
-      setProcess(updatedProcess);
-      alert('Work Products erfolgreich gespeichert');
-    } catch (error) {
-      console.error('Fehler:', error);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setEditedValues({ ...editedValues, [name]: value });
+  };
+
+  const handleAddDialogOpen = () => {
+    setAddDialogOpen(true);
+  };
+
+  const handleAddDialogClose = () => {
+    setAddDialogOpen(false);
+    setNewWorkProduct(null);
+    setEditedValues({ known: '', unknown: '' });
+  };
+
+  const handleAddWorkProduct = () => {
+    if (newWorkProduct && editedValues.known !== '' && editedValues.unknown !== '') {
+      const newWp = { name: newWorkProduct.label, known: parseInt(editedValues.known), unknown: parseInt(editedValues.unknown) };
+      setSimulationData({ ...simulationData, workProducts: [...simulationData.workProducts, newWp] });
+      handleAddDialogClose();
+      console.log('Neues Work Product hinzugefügt:', newWp);
     }
+  };
+
+  const handleNewWorkProductChange = (event, newValue) => {
+    setNewWorkProduct(newValue);
   };
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', mb: 2 }}>
-        <FormControl sx={{ mr: 1, width: 200 }}>
-          <InputLabel>Work Product</InputLabel>
-          <Select
-            value={newEntry.workProductId}
-            onChange={(e) => setNewEntry({ ...newEntry, workProductId: e.target.value })}
-            label="Work Product"
-          >
-            <MenuItem value="">Auswählen</MenuItem>
-            {workProducts.map(wp => (
-              <MenuItem key={wp._id} value={wp._id}>{wp.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <TextField
-          label="Bekannt"
-          type="number"
-          value={newEntry.known}
-          onChange={(e) => setNewEntry({ ...newEntry, known: e.target.value })}
-          sx={{ mr: 1, width: 100 }}
-          inputProps={{ min: 0 }}
-        />
-        <TextField
-          label="Unbekannt"
-          type="number"
-          value={newEntry.unknown}
-          onChange={(e) => setNewEntry({ ...newEntry, unknown: e.target.value })}
-          sx={{ mr: 1, width: 100 }}
-          inputProps={{ min: 0 }}
-        />
-        <Button variant="contained" onClick={handleAdd}>Hinzufügen</Button>
-      </Box>
-      {(process.workProducts || []).map((entry, index) => (
-        <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Typography sx={{ mr: 2, width: 200 }}>
-            {workProducts.find(wp => wp._id === entry.workProductId)?.name || 'Unbekannt'}
-          </Typography>
-          <Typography sx={{ mr: 2, width: 100 }}>Bekannt: {entry.known}</Typography>
-          <Typography sx={{ mr: 2, width: 100 }}>Unbekannt: {entry.unknown}</Typography>
-          <IconButton onClick={() => handleDelete(index)}><Delete /></IconButton>
-        </Box>
-      ))}
-      <Button variant="contained" onClick={handleSave}>Speichern</Button>
+      <Typography variant="h6">Simulation</Typography>
+      <Button variant="contained" onClick={handleAddDialogOpen} sx={{ mb: 2 }}>
+        HINZUFÜGEN
+      </Button>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Work Product</TableCell>
+            <TableCell>Bekannt</TableCell>
+            <TableCell>Unbekannt</TableCell>
+            <TableCell>Aktionen</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {simulationData.workProducts.map((wp, index) => (
+            <TableRow key={index}>
+              <TableCell>{wp.name}</TableCell>
+              <TableCell>
+                {editIndex === index ? (
+                  <TextField
+                    name="known"
+                    value={editedValues.known}
+                    onChange={handleChange}
+                    type="number"
+                    size="small"
+                  />
+                ) : (
+                  wp.known || 0
+                )}
+              </TableCell>
+              <TableCell>
+                {editIndex === index ? (
+                  <TextField
+                    name="unknown"
+                    value={editedValues.unknown}
+                    onChange={handleChange}
+                    type="number"
+                    size="small"
+                  />
+                ) : (
+                  wp.unknown || 0
+                )}
+              </TableCell>
+              <TableCell>
+                {editIndex === index ? (
+                  <Button variant="contained" onClick={() => handleSave(index)} size="small">
+                    SPEICHERN
+                  </Button>
+                ) : (
+                  <>
+                    <Button variant="outlined" onClick={() => handleEdit(index)} size="small" sx={{ mr: 1 }}>
+                      EDIT
+                    </Button>
+                    <Button variant="outlined" color="error" onClick={() => handleDelete(index)} size="small">
+                      DELETE
+                    </Button>
+                  </>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Popup für Hinzufügen */}
+      <Dialog open={addDialogOpen} onClose={handleAddDialogClose}>
+        <DialogTitle>Neues Work Product hinzufügen</DialogTitle>
+        <DialogContent>
+          <Autocomplete
+            options={availableWorkProducts}
+            getOptionLabel={(option) => option.label}
+            value={newWorkProduct}
+            onChange={handleNewWorkProductChange}
+            renderInput={(params) => <TextField {...params} label="Work Product auswählen" variant="outlined" />}
+            fullWidth
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            name="known"
+            label="Bekannt"
+            value={editedValues.known}
+            onChange={handleChange}
+            type="number"
+            fullWidth
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            name="unknown"
+            label="Unbekannt"
+            value={editedValues.unknown}
+            onChange={handleChange}
+            type="number"
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAddDialogClose}>ABBRECHEN</Button>
+          <Button onClick={handleAddWorkProduct} variant="contained">
+            HINZUFÜGEN
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

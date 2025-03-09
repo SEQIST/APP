@@ -4,6 +4,7 @@ import { Box, Tabs, Tab, Typography } from '@mui/material';
 import ProcessDetailsTab from './ProcessDetailsTab';
 import ProcessSimulationTab from './ProcessSimulationTab';
 import GanttTab from './GanttTab';
+import { ProjectCalculationTab } from './ProjectCalculationTab';
 
 const EditProcess = () => {
   const { id } = useParams();
@@ -16,16 +17,24 @@ const EditProcess = () => {
   useEffect(() => {
     const fetchProcess = async () => {
       try {
+        console.log('Lade Prozess mit ID:', id);
         const response = await fetch(`http://localhost:5001/api/processes/${id}`);
-        if (!response.ok) throw new Error('Fehler beim Laden des Prozesses');
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Fehler beim Laden des Prozesses: ${errorText}`);
+        }
         const data = await response.json();
         setProcess(data);
         const activitiesResponse = await fetch(`http://localhost:5001/api/activities?process=${id}`);
-        if (!activitiesResponse.ok) throw new Error('Fehler beim Laden der Aktivitäten');
+        if (!activitiesResponse.ok) {
+          const errorText = await activitiesResponse.text();
+          throw new Error(`Fehler beim Laden der Aktivitäten: ${errorText}`);
+        }
         const activitiesData = await activitiesResponse.json();
         setActivities(activitiesData.filter(a => a.process === id || a.process?._id === id));
         setLoading(false);
       } catch (error) {
+        console.error('Fehler beim Laden:', error);
         setError(error.message);
         setLoading(false);
       }
@@ -50,17 +59,19 @@ const EditProcess = () => {
         <Tab label="Details" />
         <Tab label="Simulation" />
         <Tab label="Gantt" />
+        <Tab label="Projektberechnung" />
       </Tabs>
       {tabValue === 0 && (
         <ProcessDetailsTab
           process={process}
           setProcess={setProcess}
           activities={activities}
-          setActivities={setActivities} // Neu hinzugefügt
+          setActivities={setActivities}
         />
       )}
       {tabValue === 1 && <ProcessSimulationTab process={process} setProcess={setProcess} />}
       {tabValue === 2 && <GanttTab process={process} activities={activities} />}
+      {tabValue === 3 && <ProjectCalculationTab activities={activities} />}
     </Box>
   );
 };

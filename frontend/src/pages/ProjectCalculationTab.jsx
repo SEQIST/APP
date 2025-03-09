@@ -1,56 +1,34 @@
 // src/pages/ProjectCalculationTab.jsx
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
-import { Loader } from '@google/charts/loader';
 import { calculateProject } from '../utils/projectCalculation';
 
-const ProjectCalculationTab = ({ activities }) => {
-  // Google Gantt-Diagramm laden
+export const ProjectCalculationTab = ({ activities }) => {
+  const [roles, setRoles] = useState({});
+
   useEffect(() => {
-    if (activities.length > 0) {
-      Loader.load({
-        packages: ['gantt'],
-        callback: () => {
-          const calculatedActivities = calculateProject(activities);
-          const data = new window.google.visualization.DataTable();
-          data.addColumn('string', 'Task ID');
-          data.addColumn('string', 'Task Name');
-          data.addColumn('string', 'Resource');
-          data.addColumn('date', 'Start Date');
-          data.addColumn('date', 'End Date');
-          data.addColumn('number', 'Duration');
-          data.addColumn('number', 'Percent Complete');
-          data.addColumn('string', 'Dependencies');
+    const fetchRoles = async () => {
+      try {
+        const response = await fetch('http://localhost:5001/api/roles');
+        if (!response.ok) throw new Error('Fehler beim Laden der Rollen');
+        const rolesData = await response.json();
+        const roleMap = rolesData.reduce((acc, role) => {
+          acc[role._id] = role.name;
+          return acc;
+        }, {});
+        setRoles(roleMap);
+      } catch (error) {
+        console.error('Fehler beim Laden der Rollen:', error);
+      }
+    };
+    fetchRoles();
+  }, []);
 
-          const rows = calculatedActivities.map(activity => [
-            activity.id,
-            activity.name,
-            activity.role === 'unknown' ? 'Nicht besetzt (Risiko)' : activity.role,
-            activity.start,
-            activity.end,
-            null, // Duration wird von Google Gantt berechnet
-            0, // Percent Complete (Platzhalter)
-            null, // Dependencies (Platzhalter)
-          ]);
-
-          data.addRows(rows);
-
-          const chart = new window.google.visualization.Gantt(document.getElementById('gantt_chart'));
-          chart.draw(data, {
-            height: calculatedActivities.length * 50 + 50,
-            gantt: {
-              criticalPathEnabled: true,
-              criticalPathStyle: { stroke: '#e00', strokeWidth: 5 },
-              trackHeight: 50,
-            },
-          });
-        },
-      });
-    }
-  }, [activities]);
-
-  const calculatedActivities = calculateProject(activities);
+  const calculatedActivities = calculateProject(activities).map(activity => ({
+    ...activity,
+    roleName: roles[activity.role] || (activity.role === 'unknown' ? 'Nicht besetzt (Risiko)' : activity.role),
+  }));
 
   return (
     <Box>
@@ -72,7 +50,7 @@ const ProjectCalculationTab = ({ activities }) => {
             <TableRow key={activity.id}>
               <TableCell>{activity.name}</TableCell>
               <TableCell>{activity.start.toLocaleDateString()}</TableCell>
-              <TableCell>{activity.role === 'unknown' ? 'Nicht besetzt (Risiko)' : activity.role}</TableCell>
+              <TableCell>{activity.roleName}</TableCell>
               <TableCell>{activity.duration}</TableCell>
               <TableCell>{activity.end.toLocaleDateString()}</TableCell>
               <TableCell>{activity.cost.toFixed(2)}</TableCell>
@@ -81,10 +59,8 @@ const ProjectCalculationTab = ({ activities }) => {
           ))}
         </TableBody>
       </Table>
-      <Typography variant="h6" sx={{ mt: 2 }}>Gantt-Diagramm</Typography>
+      <Typography variant="h6" sx={{ mt: 2 }}>Gantt-Diagramm (wird später hinzugefügt)</Typography>
       <div id="gantt_chart" style={{ width: '100%', height: '400px' }} />
     </Box>
   );
 };
-
-export default ProjectCalculationTab;

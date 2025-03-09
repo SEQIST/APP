@@ -4,12 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import { calculateProject } from '../utils/projectCalculation';
 
-export const ProjectCalculationTab = ({ activities, simulationData }) => {
+export const ProjectCalculationTab = ({ activities, simulationData, setCalculatedActivities }) => {
   const [roles, setRoles] = useState({});
-  const [calculatedActivities, setCalculatedActivities] = useState([]);
+  const [calculatedActivities, setLocalCalculatedActivities] = useState([]);
 
   useEffect(() => {
-    console.log('Lade Rollen...');
     const fetchRoles = async () => {
       try {
         const response = await fetch('http://localhost:5001/api/roles');
@@ -20,7 +19,6 @@ export const ProjectCalculationTab = ({ activities, simulationData }) => {
           return acc;
         }, {});
         setRoles(roleMap);
-        console.log('Rollen geladen:', roleMap);
       } catch (error) {
         console.error('Fehler beim Laden der Rollen:', error);
       }
@@ -29,19 +27,39 @@ export const ProjectCalculationTab = ({ activities, simulationData }) => {
   }, []);
 
   useEffect(() => {
-    console.log('Berechne Aktivitäten mit neuen Simulation-Daten...', simulationData);
     try {
       const result = calculateProject(activities, simulationData);
-      const mappedActivities = result.map(activity => ({
-        ...activity,
-        roleName: roles[activity.role] || (activity.role === 'unknown' ? 'Nicht besetzt (Risiko)' : activity.role),
-      }));
+      const mappedActivities = result.map(activity => {
+        const start = new Date(activity.start);
+        const end = new Date(activity.end);
+        console.log('Raw start:', activity.start, 'Converted start:', start);
+        console.log('Raw end:', activity.end, 'Converted end:', end);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          console.error('Invalid date for activity:', activity);
+          return null; // Überspringe ungültige Aktivitäten
+        }
+
+        return {
+          ...activity,
+          roleName: roles[activity.role] || (activity.role === 'unknown' ? 'Nicht besetzt (Risiko)' : activity.role),
+          start: start,
+          end: end,
+        };
+      }).filter(activity => activity !== null);
+      console.log('Calculated Activities in ProjectCalculationTab:', mappedActivities);
+      setLocalCalculatedActivities(mappedActivities);
       setCalculatedActivities(mappedActivities);
-      console.log('Berechnete Aktivitäten:', mappedActivities);
     } catch (error) {
       console.error('Fehler bei der Berechnung:', error);
     }
-  }, [activities, roles, simulationData]); // Reagiert auf Änderungen von simulationData
+  }, [activities, roles, simulationData, setCalculatedActivities]);
+
+  const totalDays = calculatedActivities.reduce((sum, activity) => sum + (activity.duration || 0), 0);
+  const totalKnownHours = calculatedActivities.reduce((sum, activity) => sum + (activity.knownDuration || 0), 0);
+  const totalEstimatedHours = calculatedActivities.reduce((sum, activity) => sum + (activity.estimatedDuration || 0), 0);
+  const totalHours = totalKnownHours + totalEstimatedHours;
+  const totalCost = calculatedActivities.reduce((sum, activity) => sum + (activity.cost || 0), 0);
 
   return (
     <Box>
@@ -74,10 +92,17 @@ export const ProjectCalculationTab = ({ activities, simulationData }) => {
               <TableCell>{activity.hasStartConflict ? 'Ja' : 'Nein'}</TableCell>
             </TableRow>
           ))}
+          <TableRow>
+            <TableCell colSpan={3}><strong>Gesamt</strong></TableCell>
+            <TableCell><strong>{totalDays.toFixed(2)}</strong></TableCell>
+            <TableCell><strong>{totalKnownHours.toFixed(2)}</strong></TableCell>
+            <TableCell><strong>{totalEstimatedHours.toFixed(2)}</strong></TableCell>
+            <TableCell></TableCell>
+            <TableCell><strong>{totalCost.toFixed(2)}</strong></TableCell>
+            <TableCell></TableCell>
+          </TableRow>
         </TableBody>
       </Table>
-      <Typography variant="h6" sx={{ mt: 2 }}>Gantt-Diagramm (vorübergehend deaktiviert)</Typography>
-      <div id="gantt_chart" style={{ width: '100%', height: '400px' }} />
     </Box>
   );
 };

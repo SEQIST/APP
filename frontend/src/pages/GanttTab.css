@@ -1,0 +1,10 @@
+/* src/pages/GanttTab.css */
+.gantt-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.gantt-container div {
+  height: 100% !important;
+  width: 100% !important;
+}

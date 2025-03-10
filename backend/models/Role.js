@@ -8,10 +8,11 @@ const roleSchema = new mongoose.Schema({
   department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
   paymentType: { type: String, enum: ['yearly', 'hourly'], required: true },
   paymentValue: { type: Number, required: true },
-  numberOfHolders: { type: Number, default: 0, min: 0 }, // Neues Feld: Anzahl der Rolleninhaber
+  numberOfHolders: { type: Number, default: 0, min: 0 },
+  isJuniorTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', default: null } // Neues Feld
 });
 
-// Index für die Kombination von Name und Abkürzung (UNIQUE)
 roleSchema.index({ name: 1, abbreviation: 1 }, { unique: true });
+roleSchema.index({ isJuniorTo: 1 }); // Optionaler Index für schnellere Abfragen
 
 module.exports = mongoose.model('Role', roleSchema);

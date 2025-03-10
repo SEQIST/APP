@@ -175,14 +175,19 @@ app.delete('/api/departments/:id', async (req, res) => {
 // Rollen-Endpunkte
 app.post('/api/roles', async (req, res) => {
   try {
+    console.log('Empfangene Daten für Rolle:', req.body); // Debugging
     const role = new Role(req.body);
-    await role.save();
-    res.status(201).json(role);
+    const savedRole = await role.save();
+    console.log('Gespeicherte Rolle:', savedRole); // Debugging
+    res.status(201).json(savedRole);
   } catch (error) {
+    console.error('Fehler beim Erstellen der Rolle:', error); // Verbesserte Fehlerprotokollierung
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: 'Validierungsfehler: ' + Object.values(error.errors).map(e => e.message).join(', ') });
+    }
     res.status(400).json({ error: error.message });
   }
 });
-
 app.get('/api/roles', async (req, res) => {
   try {
     const roles = await Role.find().populate('company').populate('department');

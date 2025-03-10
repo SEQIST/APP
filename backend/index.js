@@ -19,7 +19,7 @@ app.use((req, res, next) => {
   next();
 });
 
-mongoose.connect('mongodb://127.0.0.1:27018/myapp', {})
+mongoose.connect('mongodb://127.0.0.1:27017/myapp', {})
   .then(() => console.log('MongoDB connected mit myapp'))
   .catch(err => console.log('MongoDB myapp connection error:', err));
 
@@ -509,4 +509,4 @@ app.delete('/api/activities/:id', async (req, res) => {
   }
 });
 
-app.listen(5001, () => console.log('Server läuft auf Port 5001'));
+app.listen(5001, () => console.log('Server läuft auf Port 5001 mit 27017'));

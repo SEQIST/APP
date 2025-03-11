@@ -61,12 +61,12 @@ const CustomNode = ({ data }) => {
     >
       <Handle
         type="target"
-        position="top"
+        position="left" // Ankommende Pfeile links (270°)
         style={{ background: '#555', borderRadius: '50%' }}
       />
       <Handle
         type="source"
-        position="bottom"
+        position="right" // Abgehende Pfeile rechts (90°)
         style={{ background: '#555', borderRadius: '50%' }}
       />
       <Typography variant="subtitle1" sx={{ textAlign: 'center', fontWeight: 'bold' }}>
@@ -93,9 +93,9 @@ const CustomNode = ({ data }) => {
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           {data.compressor === 'multiply' ? (
-            <Expand sx={{ fontSize: 16, mr: 0.5 }} /> // Multiply
+            <Expand sx={{ fontSize: 16, mr: 0.5 }} />
           ) : (
-            <Compress sx={{ fontSize: 16, mr: 0.5 }} /> // Compress
+            <Compress sx={{ fontSize: 16, mr: 0.5 }} />
           )}
           <Typography variant="body2">{data.multiplicator || 1}</Typography>
         </Box>
@@ -123,7 +123,7 @@ const ProcessFlowintern = ({ activities, onNodeClick }) => {
           knownTime: activity.knownTime || 0,
           estimatedTime: activity.estimatedTime || 0,
           multiplicator: activity.multiplicator || 1,
-          compressor: activity.compressor || 'multiply', // Vom Backend laden
+          compressor: activity.compressor || 'multiply',
         },
         position: { x: 0, y: 0 },
         draggable: true,
@@ -151,6 +151,8 @@ const ProcessFlowintern = ({ activities, onNodeClick }) => {
               target: targetActivity._id,
               type: 'step',
               markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#333' },
+              sourcePosition: 'right',  // Abgehende Pfeile auf 90° (rechts)
+              targetPosition: 'left',   // Ankommende Pfeile auf 270° (links)
               style: { stroke: '#333', strokeWidth: 2 },
             });
           }

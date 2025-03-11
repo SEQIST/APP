@@ -79,7 +79,7 @@ const ProcessDetailsTab = ({ process, setProcess, activities, setActivities }) =
             <ActivityForm
               activityId={selectedActivityId}
               onClose={handleCloseDrawer}
-              onSave={handleActivityUpdate} // Hier korrekt übergeben
+              onSave={handleActivityUpdate}
               activities={activities}
             />
           )}

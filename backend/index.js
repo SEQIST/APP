@@ -103,21 +103,31 @@ app.get('/api/workproducts', async (req, res) => {
 
 app.post('/api/workproducts', async (req, res) => {
   try {
+    console.log('Empfangene Daten für Work Product:', req.body); // Debugging
     const workProduct = new WorkProduct(req.body);
     const savedWorkProduct = await workProduct.save();
+    console.log('Gespeichertes Work Product:', savedWorkProduct); // Debugging
     res.status(201).json(savedWorkProduct);
   } catch (error) {
     console.error('Fehler beim Erstellen des Work Products:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: 'Validierungsfehler: ' + Object.values(error.errors).map(e => e.message).join(', ') });
+    }
     res.status(500).json({ error: 'Interner Serverfehler: ' + error.message });
   }
 });
 
 app.put('/api/workproducts/:id', async (req, res) => {
   try {
-    const workProduct = await WorkProduct.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    console.log('Empfangene Daten für Update Work Product:', req.body); // Debugging
+    const workProduct = await WorkProduct.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!workProduct) return res.status(404).json({ error: 'WorkProduct not found' });
     res.json(workProduct);
   } catch (error) {
+    console.error('Fehler beim Bearbeiten des Work Products:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: 'Validierungsfehler: ' + Object.values(error.errors).map(e => e.message).join(', ') });
+    }
     res.status(400).json({ error: error.message });
   }
 });
@@ -128,6 +138,7 @@ app.delete('/api/workproducts/:id', async (req, res) => {
     if (!workProduct) return res.status(404).json({ error: 'WorkProduct not found' });
     res.json({ message: 'WorkProduct deleted' });
   } catch (error) {
+    console.error('Fehler beim Löschen des Work Products:', error);
     res.status(400).json({ error: error.message });
   }
 });

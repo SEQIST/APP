@@ -16,10 +16,11 @@ import { Box, Typography } from '@mui/material';
 import { Person, Inventory, AccessTime, Expand, Compress } from '@mui/icons-material';
 
 const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-const getLayoutedElements = (nodes, edges) => {
+const getLayoutedElements = (nodes, edges, savedPositions) => {
   dagreGraph.setGraph({ rankdir: 'TB' });
 
   nodes.forEach((node) => {
+    const savedPos = savedPositions[node.id] || { x: 0, y: 0 };
     dagreGraph.setNode(node.id, { width: 200, height: 120 });
   });
 
@@ -32,10 +33,10 @@ const getLayoutedElements = (nodes, edges) => {
   return {
     nodes: nodes.map((node) => ({
       ...node,
-      position: {
+      position: savedPositions[node.id] || {
         x: dagreGraph.node(node.id).x - 100,
         y: dagreGraph.node(node.id).y - 60,
-      },
+      }, // Priorisiere gespeicherte Positionen
     })),
     edges,
   };
@@ -110,8 +111,32 @@ const ProcessFlowintern = ({ activities, onNodeClick }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+  // Funktion zum Laden der gespeicherten Positionen
+  const loadSavedPositions = () => {
+    const savedPositions = localStorage.getItem('nodePositions');
+    console.log('Geladene Positionen aus localStorage:', savedPositions); // Debugging
+    return savedPositions ? JSON.parse(savedPositions) : {};
+  };
+
+  // Funktion zum Speichern der Positionen
+  const savePositions = (updatedNodes) => {
+    const positions = {};
+    updatedNodes.forEach((node) => {
+      if (node.position) {
+        positions[node.id] = node.position;
+      }
+    });
+    console.log('Speichere Positionen:', positions); // Debugging
+    try {
+      localStorage.setItem('nodePositions', JSON.stringify(positions));
+    } catch (e) {
+      console.error('Fehler beim Speichern in localStorage:', e); // Fehlercatching
+    }
+  };
+
   useEffect(() => {
     if (activities.length > 0) {
+      const savedPositions = loadSavedPositions();
       const activityNodes = activities.map((activity) => ({
         id: activity._id,
         type: 'custom',
@@ -125,7 +150,7 @@ const ProcessFlowintern = ({ activities, onNodeClick }) => {
           multiplicator: activity.multiplicator || 1,
           compressor: activity.compressor || 'multiply',
         },
-        position: { x: 0, y: 0 },
+        position: savedPositions[activity._id] || { x: 0, y: 0 }, // Verwende gespeicherte Position oder Standard
         draggable: true,
       }));
 
@@ -159,18 +184,29 @@ const ProcessFlowintern = ({ activities, onNodeClick }) => {
         });
       });
 
-      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(activityNodes, activityEdges);
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(activityNodes, activityEdges, savedPositions);
       setNodes(layoutedNodes);
       setEdges(layoutedEdges);
     }
   }, [activities]);
+
+  // Speichere Positionen, wenn sich Knoten ändern
+  const onNodesChangeHandler = (changes) => {
+    console.log('Knotenänderungen erkannt:', changes); // Debugging
+    const updatedNodes = applyNodeChanges(changes, nodes);
+    if (changes.some((change) => change.type === 'position')) {
+      console.log('Positionsänderung erkannt, speichere...');
+      savePositions(updatedNodes);
+    }
+    setNodes(updatedNodes);
+  };
 
   return (
     <Box sx={{ height: 600, border: '1px solid #ccc' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={onNodesChangeHandler} // Aktualisierte Handler für Speicherung
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}

@@ -8,7 +8,7 @@ const Sidebar = () => {
 
   const menuItems = [
     { text: 'Home', icon: <Home />, path: '/' },
-    { text: 'Projekt', icon: <Work />, path: '/project' },
+    { text: 'Projekt', icon: <Work />, path: '/projects' },
     { text: 'Gantt des Projektes', icon: <Work />, path: '/gantt-project' },
     { text: 'Kunden', icon: <People />, path: '/customers' },
     { text: 'Prozessgruppen', icon: <Group />, path: '/process-groups' },

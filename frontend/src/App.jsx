@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
-import Project from './pages/Project';
+import Projects from './pages/Projects';
+// import Project from './pages/Project';
 import GanttProject from './pages/GanttProject';
 import Customers from './pages/Customers';
 import ProcessGroups from './pages/ProcessGroups';
@@ -26,6 +27,8 @@ import TriggerPage from './pages/TriggerPage';
 import TriggerForm from './pages/TriggerForm';
 import TriggerEdit from './pages/TriggerEdit';
 import ActivityForm from './pages/ActivityForm';
+
+import ProjectDetails from './pages/ProjectDetails';
 
 // Wrapper-Komponente für ActivityForm in Routen
 const ActivityFormWrapper = ({ activities }) => {
@@ -52,24 +55,46 @@ const ActivityFormWrapper = ({ activities }) => {
 };
 
 const App = () => {
+  const [releases, setReleases] = useState([]);
+  const [events, setEvents] = useState([]);
   const [triggers, setTriggers] = useState([]);
-  const [activities, setActivities] = useState([]); // Neuer globaler State
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [triggersResponse, activitiesResponse] = await Promise.all([
+        console.log('Starte Datenabruf...');
+        const [
+          releasesResponse,
+          eventsResponse,
+          triggersResponse,
+          activitiesResponse,
+        ] = await Promise.all([
+          fetch('http://localhost:5001/api/releases'),
+          fetch('http://localhost:5001/api/events'),
           fetch('http://localhost:5001/api/triggers'),
           fetch('http://localhost:5001/api/activities'),
         ]);
+        console.log('Antworten erhalten:', { 
+          releasesResponse: releasesResponse.status, 
+          eventsResponse: eventsResponse.status, 
+          triggersResponse: triggersResponse.status, 
+          activitiesResponse: activitiesResponse.status 
+        });
+        if (!releasesResponse.ok) throw new Error('Fehler beim Laden der Releases');
+        if (!eventsResponse.ok) throw new Error('Fehler beim Laden der Events');
         if (!triggersResponse.ok) throw new Error('Fehler beim Laden der Trigger');
         if (!activitiesResponse.ok) throw new Error('Fehler beim Laden der Aktivitäten');
-        
+
+        const releasesData = await releasesResponse.json();
+        const eventsData = await eventsResponse.json();
         const triggersData = await triggersResponse.json();
         const activitiesData = await activitiesResponse.json();
-        
+
+        setReleases(Array.isArray(releasesData) ? releasesData : []);
+        setEvents(Array.isArray(eventsData) ? eventsData : []);
         setTriggers(Array.isArray(triggersData) ? triggersData : []);
         setActivities(Array.isArray(activitiesData) ? activitiesData : []);
         setLoading(false);
@@ -89,9 +114,7 @@ const App = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTrigger),
       });
-      if (!response.ok) {
-        throw new Error(`Serverfehler: ${response.status} ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`Serverfehler: ${response.status} ${response.statusText}`);
       const data = await response.json();
       setTriggers((prevTriggers) => [...prevTriggers, data]);
     } catch (error) {
@@ -107,15 +130,81 @@ const App = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedTrigger),
       });
-      if (!response.ok) {
-        throw new Error(`Serverfehler: ${response.status} ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`Serverfehler: ${response.status} ${response.statusText}`);
       const data = await response.json();
       setTriggers((prevTriggers) =>
         prevTriggers.map((t) => (t._id === triggerId ? data : t))
       );
     } catch (error) {
       console.error('Fehler beim Aktualisieren des Triggers:', error);
+      setError(error.message);
+    }
+  };
+
+  const addRelease = async (newRelease) => {
+    try {
+      const response = await fetch('http://localhost:5001/api/releases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRelease),
+      });
+      if (!response.ok) throw new Error(`Serverfehler: ${response.status} ${response.statusText}`);
+      const data = await response.json();
+      setReleases((prevReleases) => [...prevReleases, data]);
+    } catch (error) {
+      console.error('Fehler beim Hinzufügen der Release:', error);
+      setError(error.message);
+    }
+  };
+
+  const updateRelease = async (releaseId, updatedRelease) => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/releases/${releaseId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedRelease),
+      });
+      if (!response.ok) throw new Error(`Serverfehler: ${response.status} ${response.statusText}`);
+      const data = await response.json();
+      setReleases((prevReleases) =>
+        prevReleases.map((r) => (r._id === releaseId ? data : r))
+      );
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren der Release:', error);
+      setError(error.message);
+    }
+  };
+
+  const addEvent = async (newEvent) => {
+    try {
+      const response = await fetch('http://localhost:5001/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEvent),
+      });
+      if (!response.ok) throw new Error(`Serverfehler: ${response.status} ${response.statusText}`);
+      const data = await response.json();
+      setEvents((prevEvents) => [...prevEvents, data]);
+    } catch (error) {
+      console.error('Fehler beim Hinzufügen des Events:', error);
+      setError(error.message);
+    }
+  };
+
+  const updateEvent = async (eventId, updatedEvent) => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/events/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedEvent),
+      });
+      if (!response.ok) throw new Error(`Serverfehler: ${response.status} ${response.statusText}`);
+      const data = await response.json();
+      setEvents((prevEvents) =>
+        prevEvents.map((e) => (e._id === eventId ? data : e))
+      );
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren des Events:', error);
       setError(error.message);
     }
   };
@@ -131,7 +220,7 @@ const App = () => {
           <main style={{ flex: 1 }}>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/project" element={<Project />} />
+ 
               <Route path="/gantt-project" element={<GanttProject />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/process-groups" element={<ProcessGroups />} />
@@ -156,6 +245,8 @@ const App = () => {
               <Route path="/edit-processes/:id" element={<EditProcess />} />
               <Route path="/edit-processes/new" element={<EditProcess />} />
               <Route path="/create-process" element={<CreateProcess />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:id" element={<ProjectDetails releases={releases} events={events} addRelease={addRelease} updateRelease={updateRelease} addEvent={addEvent} updateEvent={updateEvent} />} />
             </Routes>
           </main>
         </div>

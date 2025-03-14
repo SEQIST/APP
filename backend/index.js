@@ -1,3 +1,4 @@
+// /backend/index.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -12,8 +13,8 @@ const processRoutes = require('./routes/processRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const releaseRoutes = require('./routes/releaseRoutes');
-const eventRoutes = require('./routes/eventRoutes');
-const projectRoutes = require('./routes/projectRoutes');
+// const eventRoutes = require('./routes/eventRoutes');
+//const projectRoutes = require('./routes/projectRoutes');
 
 const app = express();
 app.use(express.json());
@@ -34,8 +35,8 @@ app.use('/api/processes', processRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/release', releaseRoutes);
-app.use('/api/event', eventRoutes);
-app.use('/api/projects', projectRoutes);
+// app.use('/api/event', eventRoutes);
+// app.use('/api/projects', projectRoutes);
 
 mongoose.connect('mongodb://127.0.0.1:27017/myapp', {})
   .then(() => console.log('MongoDB connected mit myapp'))
